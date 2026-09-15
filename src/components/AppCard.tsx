@@ -14,6 +14,7 @@ interface AppCardProps {
 }
 
 export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, canManage, isAdmin, onHide, onRestore, onPermanentDelete }) => {
+  const ratingLabel = app.ratingCount ? app.rating.toFixed(1) : '신규';
   const getActionIcon = () => {
     switch (app.actionIcon) {
       case 'restaurant':
@@ -85,7 +86,8 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white text-xs font-medium pointer-events-none z-10">
           <span className="flex items-center gap-1 drop-shadow-sm font-semibold">
             <Star className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
-            <span>{app.rating.toFixed(1)}</span>
+            <span>{ratingLabel}</span>
+            {!!app.ratingCount && <span className="text-white/80 font-normal">({app.ratingCount}명)</span>}
             <span className="text-white/80 font-normal">
               (플레이 {app.plays.toLocaleString()}회)
             </span>
@@ -101,11 +103,10 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
       <div className="p-4 flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3
-              onClick={() => onOpenApp(app)}
-              className="text-base font-bold text-[#0b1c30] leading-snug cursor-pointer hover:text-[#3525cd] transition-colors line-clamp-1"
-            >
-              {app.title}
+            <h3 className="leading-snug line-clamp-1">
+              <button type="button" onClick={() => onOpenApp(app)} className="text-left text-base font-bold text-[#0b1c30] hover:text-[#3525cd] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3525cd] rounded">
+                {app.title}
+              </button>
             </h3>
             <p className="text-xs text-[#464555] mt-1 line-clamp-2 leading-relaxed">
               {app.description}

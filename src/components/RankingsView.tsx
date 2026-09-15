@@ -132,7 +132,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ apps, onOpenApp, onT
                     <Heart className="w-3 h-3 fill-current" /> {app.likes}개
                   </span>
                   <span className="flex items-center gap-0.5 text-amber-500 font-bold">
-                    <Star className="w-3 h-3 fill-current" /> {app.rating.toFixed(1)}
+                    <Star className="w-3 h-3 fill-current" /> {app.ratingCount ? `${app.rating.toFixed(1)} (${app.ratingCount})` : '신규'}
                   </span>
                 </div>
               </div>

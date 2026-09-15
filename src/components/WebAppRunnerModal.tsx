@@ -6,6 +6,7 @@ import {
   RotateCcw,
   ExternalLink,
   Heart,
+  MessageSquare,
   Star,
   Share2,
   Sparkles,
@@ -16,9 +17,10 @@ import {
   Trophy,
   CheckCircle2,
 } from 'lucide-react';
-import { AppProject } from '../types';
+import { AppProject, ProjectComment } from '../types';
 import { safeUrl } from '../storage';
 import { useModal } from '../useModal';
+import { CommentsPanel } from './CommentsPanel';
 
 interface WebAppRunnerModalProps {
   app: AppProject | null;
@@ -26,7 +28,13 @@ interface WebAppRunnerModalProps {
   onClose: () => void;
   onShowToast: (msg: string) => void;
   onToggleLike: (appId: string) => Promise<boolean>;
-  onRate: (appId: string) => Promise<boolean>;
+  onRate: (appId: string, value: number) => Promise<boolean>;
+  userRating?: number;
+  comments: ProjectComment[];
+  isCommentsLoading: boolean;
+  currentUserId?: string;
+  onSaveComment: (body: string) => Promise<boolean>;
+  onDeleteComment: (commentId: string) => Promise<boolean>;
 }
 
 export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
@@ -36,11 +44,25 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
   onShowToast,
   onToggleLike,
   onRate,
+  userRating,
+  comments,
+  isCommentsLoading,
+  currentUserId,
+  onSaveComment,
+  onDeleteComment,
 }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [score, setScore] = useState(2048);
   const [highScore, setHighScore] = useState(4096);
-  useModal(isOpen, 'webapp-runner-modal', onClose);
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [isRatingSaving, setIsRatingSaving] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const closePanelOrModal = () => {
+    if (isCommentsOpen) { setIsCommentsOpen(false); return; }
+    if (isRatingOpen) { setIsRatingOpen(false); return; }
+    onClose();
+  };
+  useModal(isOpen, 'webapp-runner-modal', closePanelOrModal);
 
   // 2048 game grid
   const [grid2048, setGrid2048] = useState<number[]>([2, 4, 8, 16, 32, 64, 128, 512, 2048]);
@@ -239,8 +261,17 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
     } catch { onShowToast('복사하지 못했습니다. 클립보드 권한을 확인해주세요.'); }
   };
 
-  const handleStarRating = async () => {
-    if (await onRate(app.id)) onShowToast('별점 5.0을 저장했습니다.');
+  const handleStarRating = async (value: number) => {
+    if (isRatingSaving) return;
+    setIsRatingSaving(true);
+    try {
+      if (await onRate(app.id, value)) {
+        setIsRatingOpen(false);
+        onShowToast(`별점 ${value.toFixed(1)}점을 저장했습니다.`);
+      }
+    } finally {
+      setIsRatingSaving(false);
+    }
   };
 
   const handleLocalLike = async () => {
@@ -320,6 +351,16 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
         </div>
 
         {/* Viewport content */}
+        {isCommentsOpen ? (
+          <CommentsPanel
+            comments={comments}
+            currentUserId={currentUserId}
+            isLoading={isCommentsLoading}
+            onClose={() => setIsCommentsOpen(false)}
+            onSave={onSaveComment}
+            onDelete={onDeleteComment}
+          />
+        ) : (
         <div className="relative flex-1 w-full bg-[#1c293a] text-white flex flex-col items-center justify-center overflow-y-auto p-4 select-none">
           
           {/* SIMULATOR 1: 2048 Runner */}
@@ -599,14 +640,44 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
           )}
 
         </div>
+        )}
+
+        {!isCommentsOpen && isRatingOpen && (
+          <div className="px-4 py-3 bg-white border-t border-slate-100 shadow-inner">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold text-[#0b1c30]">내 평점</p>
+                <p className="text-[11px] text-[#464555]">{app.ratingCount ? `평균 ${app.rating.toFixed(1)}점 · ${app.ratingCount}명 참여` : '첫 번째 평가를 남겨보세요.'}</p>
+              </div>
+              {userRating && <span className="text-[11px] font-bold text-[#3525cd]">내가 준 별점 {userRating}점</span>}
+            </div>
+            <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="별점 선택">
+              {[1, 2, 3, 4, 5].map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={userRating === value}
+                  aria-label={`${value}점`}
+                  disabled={isRatingSaving}
+                  onClick={() => void handleStarRating(value)}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${userRating === value ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-500'} disabled:opacity-50`}
+                >
+                  <Star className="w-5 h-5 fill-current" />
+                </button>
+              ))}
+              <button type="button" onClick={() => setIsRatingOpen(false)} className="ml-auto px-2 py-2 text-xs font-bold text-[#464555]">취소</button>
+            </div>
+          </div>
+        )}
 
         {/* Modal Bottom Actions & Social Reactions Bar */}
-        <div className="px-4 py-3 bg-white flex items-center justify-between shadow-lg border-t border-slate-100">
-          <div className="flex items-center gap-2">
+        <div className="px-3 sm:px-4 py-3 bg-white flex items-center justify-between gap-2 shadow-lg border-t border-slate-100">
+          <div className="flex items-center gap-1.5 min-w-0">
             <button
               id="modal-like-btn" aria-pressed={!!app.isLiked}
               onClick={handleLocalLike}
-              className="h-10 px-3.5 rounded-full bg-rose-50 text-[#8f1721] text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer hover:bg-rose-100"
+              className="h-10 px-3 rounded-full bg-rose-50 text-[#8f1721] text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer hover:bg-rose-100"
               type="button"
             >
               <Heart className="w-4 h-4 fill-[#8f1721]" />
@@ -614,24 +685,37 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
             </button>
 
             <button
+              id="modal-comments-btn"
+              aria-expanded={isCommentsOpen}
+              onClick={() => { setIsCommentsOpen(!isCommentsOpen); setIsRatingOpen(false); }}
+              className="h-10 px-3 rounded-full bg-[#eff4ff] text-[#3525cd] text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer hover:bg-[#dce9ff]"
+              type="button"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>{app.commentsCount}</span>
+            </button>
+
+            <button
               id="modal-star-rate"
-              onClick={handleStarRating}
-              className="h-10 px-3.5 rounded-full bg-slate-100 text-[#0b1c30] text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer hover:bg-slate-200"
+              aria-expanded={isRatingOpen}
+              onClick={() => { setIsRatingOpen(!isRatingOpen); setIsCommentsOpen(false); }}
+              className="h-10 px-3 rounded-full bg-slate-100 text-[#0b1c30] text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer hover:bg-slate-200"
               type="button"
             >
               <Star className="w-4 h-4 text-yellow-500 fill-yellow-400" />
-              <span>별점 5.0 주기</span>
+              <span>{app.ratingCount ? `${app.rating.toFixed(1)} (${app.ratingCount})` : '평가'}</span>
             </button>
           </div>
 
           <button
             id="modal-share-btn"
             onClick={handleShare}
-            className="h-10 px-4 rounded-full bg-[#3525cd] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#3525cd]/20 active:scale-95 transition-all cursor-pointer hover:bg-[#281ca3]"
+            aria-label="친구에게 공유"
+            className="h-10 w-10 sm:w-auto sm:px-4 rounded-full bg-[#3525cd] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-[#3525cd]/20 active:scale-95 transition-all cursor-pointer hover:bg-[#281ca3] flex-shrink-0"
             type="button"
           >
             <Share2 className="w-4 h-4" />
-            <span>친구에게 공유</span>
+            <span className="hidden sm:inline">친구에게 공유</span>
           </button>
         </div>
 
