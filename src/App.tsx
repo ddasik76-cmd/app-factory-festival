@@ -144,17 +144,17 @@ export default function App() {
   const handleHide = async (appId: string) => {
     if (!user || !window.confirm('이 작품을 갤러리에서 숨길까요?')) return;
     try { await hideProject(appId, user); showToast('작품을 숨겼습니다. 관리자만 복구할 수 있습니다.'); }
-    catch { showToast('작품을 숨기지 못했습니다.'); }
+    catch (error: any) { showToast(error?.code === 'permission-denied' ? '작품을 숨길 권한이 없습니다.' : '작품을 숨기지 못했습니다.'); }
   };
   const handleRestore = async (appId: string) => {
     if (!isAdmin || !window.confirm('이 작품을 갤러리에 복구할까요?')) return;
     try { await restoreProject(appId); showToast('작품을 복구했습니다.'); }
-    catch { showToast('작품을 복구하지 못했습니다.'); }
+    catch (error: any) { showToast(error?.code === 'permission-denied' ? '관리자 권한이 필요합니다.' : '작품을 복구하지 못했습니다.'); }
   };
   const handlePermanentDelete = async (appId: string) => {
     if (!isAdmin || !window.confirm('영구 삭제하면 복구할 수 없습니다. 계속할까요?')) return;
     try { await permanentlyDeleteProject(appId); showToast('작품을 영구 삭제했습니다.'); }
-    catch { showToast('작품을 영구 삭제하지 못했습니다.'); }
+    catch (error: any) { showToast(error?.code === 'permission-denied' ? '관리자 권한이 필요합니다.' : '작품을 영구 삭제하지 못했습니다.'); }
   };
 
   const handleQuickDeploy = (
