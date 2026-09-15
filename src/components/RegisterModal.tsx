@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Send } from 'lucide-react';
 import { AppProject } from '../types';
+import { useModal } from '../useModal';
 
 interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => void;
+  onSubmit: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => boolean;
 }
 
 export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -15,6 +16,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
   const [url, setUrl] = useState('');
   const [desc, setDesc] = useState('');
 
+  useModal(isOpen, 'full-register-modal', onClose);
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,7 +30,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
       fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
     };
 
-    onSubmit({
+    const saved = onSubmit({
       title,
       description: desc || `${dev} 친구가 개발한 동아리 프로젝트입니다.`,
       category,
@@ -42,9 +44,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
       authorInitial: dev.slice(-1) || '크',
       authorInitialBg: 'bg-[#4f46e5]',
       imageUrl: defaultImages[category],
-      url: url || 'https://appfactory.club',
-      simulatorType: category === 'game' ? 'runner2048' : 'generic',
+      url: url,
+      simulatorType: 'generic',
     });
+    if (!saved) return;
 
     setTitle('');
     setDev('');
@@ -55,7 +58,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
 
   return (
     <div
-      id="full-register-modal"
+      id="full-register-modal" role="dialog" aria-modal="true" aria-label="작품 등록"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 transition-all duration-300"
     >
       <div className="w-full max-w-lg max-h-[90vh] sm:max-h-[795px] rounded-t-3xl sm:rounded-3xl bg-[#f8f9ff] p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-300 border border-slate-200">
@@ -69,7 +73,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
             </h3>
           </div>
           <button
-            id="close-register-btn"
+            id="close-register-btn" aria-label="닫기"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-[#0b1c30] transition-colors cursor-pointer"
             type="button"
@@ -79,7 +83,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
         </div>
 
         <p className="text-xs text-[#464555] leading-relaxed">
-          직접 만든 웹사이트나 게임을 친구들에게 소개해보세요! 깃허브 페이지, 코드펜, 노션, Vercel 링크 모두 환영합니다.
+          등록한 작품은 이 브라우저에만 저장됩니다. 브라우저 데이터를 삭제하면 사라집니다. 실제 웹앱의 HTTP(S) 주소를 입력하세요.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" id="submission-form">
@@ -180,7 +184,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
             className="w-full mt-2 h-12 rounded-xl bg-[#3525cd] text-white text-sm font-bold shadow-md shadow-[#3525cd]/25 active:scale-98 transition-all hover:bg-[#281ca3] flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            <span>동아리 갤러리에 신청하기</span>
+            <span>이 브라우저에 작품 저장</span>
           </button>
         </form>
       </div>

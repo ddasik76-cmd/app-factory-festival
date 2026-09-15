@@ -26,7 +26,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ onSelectVocabWars }) => 
           className="flex items-center gap-3 p-2.5 rounded-xl bg-white shadow-sm border border-slate-100 hover:border-indigo-200 transition-all cursor-pointer"
         >
           <div className="relative w-12 h-12 rounded-full overflow-hidden bg-[#c3c0ff] flex-shrink-0 ring-2 ring-amber-400">
-            <img
+            <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
               alt="강도윤 MVP 동아리원"
               className="w-full h-full object-cover"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuATVIav0jyzhlIlEuDjLMC7J-gefuJfpV5U7LxPSFmj84CWcUky3_J9SgY8Amc4l0zYlntejzl1KHjBj4sWJDIHct7rQkDu1leHzPzVsAT1T-2dZVlf9i0iFOKJZLyS3Xl3IggynyseshceLIDKRyYCuXsSkheHEZa8uf1WomKyKVITy3NhPWY2kqelL6I1H6IfEBAb6KHDZr-lwD20p26v-kdC8FzCyrbhzuRspOsrzuRvp3U-8Ofl"

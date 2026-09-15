@@ -17,13 +17,16 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { AppProject } from '../types';
+import { safeUrl } from '../storage';
+import { useModal } from '../useModal';
 
 interface WebAppRunnerModalProps {
   app: AppProject | null;
   isOpen: boolean;
   onClose: () => void;
   onShowToast: (msg: string) => void;
-  onToggleLike: (appId: string) => void;
+  onToggleLike: (appId: string) => boolean;
+  onRate: (appId: string) => boolean;
 }
 
 export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
@@ -32,11 +35,12 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
   onClose,
   onShowToast,
   onToggleLike,
+  onRate,
 }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [score, setScore] = useState(2048);
   const [highScore, setHighScore] = useState(4096);
-  const [localLikes, setLocalLikes] = useState(142);
+  useModal(isOpen, 'webapp-runner-modal', onClose);
 
   // 2048 game grid
   const [grid2048, setGrid2048] = useState<number[]>([2, 4, 8, 16, 32, 64, 128, 512, 2048]);
@@ -86,16 +90,12 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
   ];
   const [lunchIdx, setLunchIdx] = useState(0);
 
-  useEffect(() => {
-    if (app) {
-      setLocalLikes(app.likes);
-    }
-  }, [app]);
+
 
   // Pomodoro countdown effect
   useEffect(() => {
     let interval: any;
-    if (isTimerRunning && timerSeconds > 0) {
+    if (isOpen && isTimerRunning && timerSeconds > 0) {
       interval = setInterval(() => {
         setTimerSeconds((prev) => prev - 1);
       }, 1000);
@@ -103,11 +103,11 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
       setIsTimerRunning(false);
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning, timerSeconds]);
+  }, [isOpen, isTimerRunning, timerSeconds]);
 
   // Handle ambient rain audio
   useEffect(() => {
-    if (!isRaining) {
+    if (!isOpen || !isRaining || !soundEnabled) {
       if (noiseNodeRef.current) {
         try {
           (noiseNodeRef.current as any).stop?.();
@@ -153,10 +153,14 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
       if (noiseNodeRef.current) {
         try {
           (noiseNodeRef.current as any).stop?.();
+          noiseNodeRef.current.disconnect();
         } catch (e) {}
       }
+      noiseNodeRef.current = null;
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') void audioContextRef.current.close();
+      audioContextRef.current = null;
     };
-  }, [isRaining]);
+  }, [isOpen, isRaining, soundEnabled]);
 
   if (!isOpen || !app) return null;
 
@@ -216,29 +220,37 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
     setIsTimerRunning(false);
     setFlippedCards([false, false, false]);
     setQuizScore(120);
+    setCurrentQuestionIdx(0);
+    setCombo(1);
+    setLunchIdx(0);
+    setIsRaining(false);
     setEnemyHp(100);
     setGrid2048([2, 4, 8, 16, 32, 64, 128, 512, 2048]);
     onShowToast('🔄 가상 프레임과 게임 데이터를 초기화했습니다.');
   };
 
-  const handleShare = () => {
-    navigator.clipboard?.writeText(window.location.href);
-    onShowToast('🔗 작품 링크가 클립보드에 복사되었어요!');
+  const handleShare = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      const url = app.simulatorType === 'generic' ? safeUrl(app.url) : window.location.href;
+      if (!url) throw new Error('Invalid URL');
+      await navigator.clipboard.writeText(url);
+      onShowToast('작품 링크를 복사했어요!');
+    } catch { onShowToast('복사하지 못했습니다. 클립보드 권한을 확인해주세요.'); }
   };
 
   const handleStarRating = () => {
-    onShowToast('⭐ 별점 5.0을 선물했습니다!');
+    if (onRate(app.id)) onShowToast('별점 5.0을 이 브라우저에 저장했습니다.');
   };
 
   const handleLocalLike = () => {
-    setLocalLikes((prev) => prev + 1);
-    onToggleLike(app.id);
-    onShowToast('💖 친구의 작품에 응원 하트를 보냈어요!');
+    if (onToggleLike(app.id)) onShowToast(app.isLiked ? '응원을 취소했어요.' : '이 브라우저에 응원을 저장했어요!');
   };
 
   return (
     <div
-      id="webapp-runner-modal"
+      id="webapp-runner-modal" role="dialog" aria-modal="true" aria-labelledby="modal-app-title"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center bg-black/60 backdrop-blur-sm transition-all duration-300 p-0 sm:p-4"
     >
       <div className="relative w-full max-w-lg h-[90vh] sm:h-[820px] max-h-[880px] rounded-t-3xl sm:rounded-3xl bg-[#f8f9ff] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
@@ -254,7 +266,7 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
                 {app.title}
               </span>
               <span className="text-[11px] text-[#464555] truncate font-medium" id="modal-app-dev">
-                {app.authorName} 제작 ({app.tech})
+                {app.authorName} 제작 · {app.simulatorType === 'generic' ? '등록 작품' : '예시 데모'}
               </span>
             </div>
           </div>
@@ -285,9 +297,10 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
 
             <a
               id="modal-newtab-btn"
-              href={app.url}
+              aria-disabled={app.simulatorType !== 'generic'}
+              href={app.simulatorType === 'generic' ? safeUrl(app.url) || undefined : undefined}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="w-8 h-8 rounded-lg bg-slate-100 text-[#0b1c30] hover:bg-slate-200 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
               title="새 탭으로 열기"
             >
@@ -310,7 +323,7 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
         <div className="relative flex-1 w-full bg-[#1c293a] text-white flex flex-col items-center justify-center overflow-y-auto p-4 select-none">
           
           {/* SIMULATOR 1: 2048 Runner */}
-          {(app.simulatorType === 'runner2048' || app.category === 'game') && (
+          {app.simulatorType === 'runner2048' && (
             <div className="w-full max-w-sm flex flex-col items-center gap-4 animate-in fade-in duration-300">
               <div className="flex items-center justify-between w-full px-2">
                 <div className="px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md text-white text-xs font-bold flex items-center gap-2">
@@ -571,12 +584,12 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
               </div>
               <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/40 px-3 py-1.5 rounded-full border border-emerald-500/30">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>샌드박스 보안 검증 완료</span>
+                <span>등록한 외부 웹사이트</span>
               </div>
               <a
-                href={app.url}
+                href={app.simulatorType === 'generic' ? safeUrl(app.url) || undefined : undefined}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-full py-3 rounded-xl bg-[#57dffe] text-[#006172] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#acedff] transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -591,13 +604,13 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
         <div className="px-4 py-3 bg-white flex items-center justify-between shadow-lg border-t border-slate-100">
           <div className="flex items-center gap-2">
             <button
-              id="modal-like-btn"
+              id="modal-like-btn" aria-pressed={!!app.isLiked}
               onClick={handleLocalLike}
               className="h-10 px-3.5 rounded-full bg-rose-50 text-[#8f1721] text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer hover:bg-rose-100"
               type="button"
             >
               <Heart className="w-4 h-4 fill-[#8f1721]" />
-              <span id="modal-like-count">{localLikes}</span>
+              <span id="modal-like-count">{app.likes}</span>
             </button>
 
             <button

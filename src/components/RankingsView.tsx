@@ -76,7 +76,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ apps, onOpenApp, onT
               }`}
             >
               <div className="mb-1">{getRankBadge(rank)}</div>
-              <img
+              <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
                 src={app.imageUrl}
                 alt={app.title}
                 className="w-12 h-12 rounded-xl object-cover my-1 shadow-sm"
@@ -108,7 +108,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ apps, onOpenApp, onT
             >
               {getRankBadge(rank)}
 
-              <img
+              <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
                 src={app.imageUrl}
                 alt={app.title}
                 className="w-14 h-14 rounded-xl object-cover shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform"

@@ -29,10 +29,11 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike }
     <article
       className="group relative flex flex-col rounded-2xl bg-white shadow-sm border border-slate-200/70 overflow-hidden transition-all duration-300 hover:shadow-md"
       data-category={app.category}
+      data-app-id={app.id}
     >
       {/* Thumbnail Area */}
       <div className="relative w-full aspect-video overflow-hidden bg-slate-100">
-        <img
+        <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
           src={app.imageUrl}
           alt={app.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -113,7 +114,7 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike }
                 ? 'bg-rose-50 text-rose-600'
                 : 'bg-slate-100 text-[#8f1721] hover:bg-rose-50 hover:text-rose-600'
             }`}
-            title="응원 하트 보내기"
+            title="응원 하트 보내기" aria-pressed={!!app.isLiked}
           >
             <Heart
               className={`w-5 h-5 ${app.isLiked ? 'fill-rose-600' : 'fill-current'}`}

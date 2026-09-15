@@ -3,7 +3,7 @@ import { Zap, Crown } from 'lucide-react';
 import { AppProject } from '../types';
 
 interface QuickDeployBannerProps {
-  onQuickDeploy: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => void;
+  onQuickDeploy: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => boolean;
 }
 
 export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDeploy }) => {
@@ -24,7 +24,7 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
       fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
     };
 
-    onQuickDeploy({
+    const saved = onQuickDeploy({
       title: appTitle,
       description: `${devName} 친구가 동아리에서 갓 완성한 멋진 신작 프로젝트!`,
       category,
@@ -38,9 +38,10 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
       authorInitial: devName.slice(-1) || '민',
       authorInitialBg: 'bg-[#4f46e5]',
       imageUrl: defaultImages[category],
-      url: appUrl || 'https://appfactory.club/project',
-      simulatorType: category === 'game' ? 'runner2048' : category === 'study' ? 'vocabWars' : 'generic',
+      url: appUrl,
+      simulatorType: 'generic',
     });
+    if (!saved) return;
 
     setAppTitle('');
     setDevName('');
@@ -59,19 +60,19 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
               👑
             </span>
             <span className="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-              부장/관리자 초고속 배포실
+              작품 빠른 등록
             </span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-white/10 text-[#acedff] text-[11px] font-bold tracking-wider">
-            LIVE BOT ON
+            이 브라우저에 저장
           </span>
         </div>
 
         <p className="text-xs text-[#d3e4fe]/80 mb-3 leading-relaxed">
-          학생 이름과 웹앱 URL만 적어주세요. 썸네일과 메타데이터가 즉시 렌더링되어 갤러리에 배포됩니다!
+          제목, 개발자, URL을 입력하세요. 등록 내용은 이 브라우저에 저장되며 다른 기기와 공유되지 않습니다.
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <form id="quick-admin-form" onSubmit={handleSubmit} className="flex flex-col gap-2">
           <div className="flex gap-2">
             <input
               id="admin-dev-name"
@@ -108,6 +109,7 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
             <input
               id="admin-app-url"
               type="url"
+              required
               value={appUrl}
               onChange={(e) => setAppUrl(e.target.value)}
               placeholder="https://..."

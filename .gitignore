@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+reference-html/
+Image 1.png
+Image 2.html
+Image 3.markdown
+integrate.mjs
+test-results/
+playwright-report/

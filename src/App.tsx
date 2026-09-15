@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { SearchAndFilters } from './components/SearchAndFilters';
@@ -16,12 +16,13 @@ import { BottomNav } from './components/BottomNav';
 import { RankingsView } from './components/RankingsView';
 import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
-import { INITIAL_APPS } from './data/initialApps';
+import { loadApps, saveApps, safeUrl } from './storage';
+import { useModal } from './useModal';
 import { AppProject, Category, ActiveTab } from './types';
 import { User, X, Laptop, Heart, Star, Sparkles } from 'lucide-react';
 
 export default function App() {
-  const [apps, setApps] = useState<AppProject[]>(INITIAL_APPS);
+  const [apps, setApps] = useState<AppProject[]>(loadApps);
   const [activeTab, setActiveTab] = useState<ActiveTab>('gallery');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,19 +31,24 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  useModal(isProfileModalOpen, 'profile-modal', () => setIsProfileModalOpen(false));
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  const currentApp = apps.find(app => app.id === selectedApp?.id) || null;
   const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     setToastMessage(msg);
-    setTimeout(() => {
+    toastTimer.current = setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
     }, 2500);
   };
 
   const totalPlays = useMemo(() => {
-    return apps.reduce((acc, cur) => acc + cur.plays, 3890);
+    return apps.reduce((acc, cur) => acc + cur.plays, 0);
   }, [apps]);
 
   const totalHearts = useMemo(() => {
-    return apps.reduce((acc, cur) => acc + cur.likes, 1412);
+    return apps.reduce((acc, cur) => acc + cur.likes, 0);
   }, [apps]);
 
   const filteredApps = useMemo(() => {
@@ -59,42 +65,40 @@ export default function App() {
     });
   }, [apps, selectedCategory, searchQuery]);
 
-  const handleToggleLike = (appId: string) => {
-    setApps((prev) =>
-      prev.map((item) => {
-        if (item.id === appId) {
-          const nextLiked = !item.isLiked;
-          return {
-            ...item,
-            isLiked: nextLiked,
-            likes: nextLiked ? item.likes + 1 : item.likes - 1,
-          };
-        }
-        return item;
-      })
-    );
+  const updateApps = (next: AppProject[]) => {
+    if (!saveApps(next)) { showToast('저장하지 못했습니다. 브라우저 저장 공간과 설정을 확인해주세요.'); return false; }
+    setApps(next);
+    return true;
   };
+  const handleToggleLike = (appId: string) => updateApps(apps.map(item => item.id === appId ? {
+    ...item, isLiked: !item.isLiked, likes: Math.max(0, item.likes + (item.isLiked ? -1 : 1)),
+  } : item));
+  const handleRate = (appId: string) => updateApps(apps.map(item => item.id === appId ? { ...item, rating: 5 } : item));
 
   const handleQuickDeploy = (
     newApp: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>
   ) => {
+    const url = safeUrl(newApp.url);
+    if (!url || !newApp.title.trim() || !newApp.authorName.trim()) { showToast('제목, 개발자와 올바른 HTTP(S) 주소를 입력해주세요.'); return false; }
     const fullApp: AppProject = {
-      ...newApp,
-      id: `app-${Date.now()}`,
+      ...newApp, url, title: newApp.title.trim(), authorName: newApp.authorName.trim(), simulatorType: 'generic',
+      id: `app-${crypto.randomUUID()}`,
       rating: 5.0,
-      plays: 1,
+      plays: 0,
       commentsCount: 0,
-      likes: 1,
-      isLiked: true,
+      likes: 0,
+      isLiked: false,
     };
-    setApps((prev) => [fullApp, ...prev]);
-    showToast(`⚡ '${fullApp.title}' (${fullApp.authorName}) 프로젝트가 즉시 배포되었습니다!`);
+    if (!updateApps([fullApp, ...apps])) return false;
+    setActiveTab('gallery'); setSelectedCategory('all'); setSearchQuery('');
+    showToast('작품을 이 브라우저에 저장했습니다. 다른 기기와 공유되지 않습니다.');
+    return true;
   };
 
   const handleRandomPlay = () => {
-    if (apps.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * apps.length);
-    setSelectedApp(apps[randomIndex]);
+    if (filteredApps.length === 0) { showToast('조건에 맞는 작품이 없습니다.'); return; }
+    const randomIndex = Math.floor(Math.random() * filteredApps.length);
+    setSelectedApp(filteredApps[randomIndex]);
   };
 
   return (
@@ -126,6 +130,7 @@ export default function App() {
               onSelectCategory={setSelectedCategory}
             />
 
+            <p className="px-4 text-xs text-slate-500">기본 5개 작품·실적은 예시이며, 등록과 응원은 이 브라우저에만 저장됩니다.</p>
             {/* Quick Admin Deployment Card */}
             <QuickDeployBanner onQuickDeploy={handleQuickDeploy} />
 
@@ -143,7 +148,7 @@ export default function App() {
                   <strong className="text-[#3525cd] font-bold" id="item-count">
                     {filteredApps.length}
                   </strong>
-                  개 작동 중
+                  개 표시 중
                 </span>
               </div>
 
@@ -199,7 +204,7 @@ export default function App() {
                 <h2 className="text-lg font-bold text-[#0b1c30]">새 웹앱 등록</h2>
               </div>
               <p className="text-xs text-[#464555] leading-relaxed">
-                직접 개발한 프로젝트를 앱팩토리 갤러리에 공유해보세요! 친구들이 실시간으로 플레이하고 하트를 보낼 수 있습니다.
+                등록한 프로젝트와 응원은 이 브라우저에 저장됩니다. 다른 기기와 자동으로 공유되지 않으며, 브라우저 데이터를 삭제하면 사라집니다.
               </p>
               <button
                 type="button"
@@ -218,11 +223,13 @@ export default function App() {
 
       {/* Interactive WebApp Simulation Runner Modal */}
       <WebAppRunnerModal
-        app={selectedApp}
+        app={currentApp}
+        key={currentApp?.id || "closed"}
         isOpen={!!selectedApp}
         onClose={() => setSelectedApp(null)}
         onShowToast={showToast}
         onToggleLike={handleToggleLike}
+        onRate={handleRate}
       />
 
       {/* Registration Modal Drawer */}
@@ -234,11 +241,11 @@ export default function App() {
 
       {/* Profile Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div id="profile-modal" role="dialog" aria-modal="true" aria-label="예시 학생 프로필" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl border border-slate-200 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#3525cd] bg-[#e5eeff] px-2.5 py-1 rounded-full">
-                학생 프로필
+                예시 학생 프로필
               </span>
               <button
                 type="button"
@@ -250,7 +257,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3">
-              <img
+              <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
                 alt="My Profile"
                 className="w-14 h-14 rounded-full object-cover ring-2 ring-indigo-200"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuA31yKR6uTmarlFLPTLbx65iZErPCHGkeWprDjJojBeZpyq72Wa58HxoIGwfsJnVDWWtmb7srQt1N-myqbkffYNPGZGwRYBKKRrv2ePF5Xt4VqHq_7jPFED3nN_XXuTbnNV1CusHEPdXcrvEeR1xhhyG3Rb0RDZTOufxkNUE_u84FPkU5TRbv1F2oMULi0hAK9_lnV7K9KqvfDUt854Wu1l_1yB7TjiFT0nvdHIHxIbTgmNeVOq1df9"

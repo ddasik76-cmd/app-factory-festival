@@ -11,7 +11,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile })
     <header className="fixed top-0 w-full z-40 bg-[#f8f9ff]/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe">
       <div className="h-16 px-4 flex items-center justify-between gap-2 max-w-5xl mx-auto">
         <div className="flex items-center gap-3">
-          <img
+          <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
             alt="AppFactory Logo"
             className="h-8 w-auto object-contain rounded-md"
             src="https://lh3.googleusercontent.com/aida/AEtjO1WxDuBc_0fUECPJ9q4XKz_DMnVsmQqXoh1VbZS6PfL6baIpXQGcP4Zqdp00NjZoZlHCegD5FEcPiK_-wycyH9qfKVW9cJQcqmgdW7izSdK3D4k1Dh9ExlLzk1oBVUqhJK2o86ZVq9sqX8ltd-Y5P3Z1U73iDcD_0N8YMBame0Uqt2A4XP7fYIGKLYNO6qQ7t-pWPCaCg4_N2P4epFvkcKpVLYAL5ScRzh6Y9pr3EZva2QI_GTv7PR0HWQ"
@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile })
             type="button"
             title="내 프로필"
           >
-            <img
+            <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuA31yKR6uTmarlFLPTLbx65iZErPCHGkeWprDjJojBeZpyq72Wa58HxoIGwfsJnVDWWtmb7srQt1N-myqbkffYNPGZGwRYBKKRrv2ePF5Xt4VqHq_7jPFED3nN_XXuTbnNV1CusHEPdXcrvEeR1xhhyG3Rb0RDZTOufxkNUE_u84FPkU5TRbv1F2oMULi0hAK9_lnV7K9KqvfDUt854Wu1l_1yB7TjiFT0nvdHIHxIbTgmNeVOq1df9"

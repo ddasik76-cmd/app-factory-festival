@@ -13,3 +13,25 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+input, select { min-width: 0; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible { outline: 3px solid #00687a; outline-offset: 3px; }
+#webapp-runner-modal > div { height: min(820px, 92dvh); max-height: 92dvh; }
+#full-register-modal > div { max-height: 92dvh; }
+#toast-notify { z-index: 80; width: max-content; max-width: calc(100% - 24px); border-radius: 16px; }
+header img { flex-shrink: 0; }
+header > div > div { min-width: 0; }
+header > div > div:last-child { flex-shrink: 0; }
+#header-new-app-btn { white-space: nowrap; }
+[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+@media (max-width: 400px) {
+  header > div { padding-inline: 12px; }
+  header > div > div:first-child { gap: 6px; }
+  header > div > div:first-child > img { width: 24px; }
+  header span { white-space: nowrap; }
+  #header-profile-btn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

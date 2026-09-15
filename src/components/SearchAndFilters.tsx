@@ -29,7 +29,7 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
       <div className="relative flex items-center w-full">
         <Search className="absolute left-3.5 text-[#464555]/70 w-4 h-4 pointer-events-none" />
         <input
-          id="search-input"
+          id="search-input" aria-label="작품 또는 개발자 검색"
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -38,7 +38,7 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
         />
         {searchQuery && (
           <button
-            id="search-clear-btn"
+            id="search-clear-btn" aria-label="검색어 지우기"
             type="button"
             onClick={() => onSearchChange('')}
             className="absolute right-3 w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs hover:bg-slate-300 transition-colors"
@@ -54,7 +54,7 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
           const isActive = selectedCategory === cat.id;
           return (
             <button
-              key={cat.id}
+              key={cat.id} data-category={cat.id} aria-pressed={isActive}
               type="button"
               onClick={() => onSelectCategory(cat.id)}
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm transition-all cursor-pointer ${
