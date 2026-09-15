@@ -20,7 +20,7 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
         'title', 'description', 'category', 'tech', 'badges', 'actionText', 'actionIcon',
         'actionBgColor', 'authorName', 'authorRole', 'authorInitial', 'authorInitialBg',
-        'imageUrl', 'rating', 'plays', 'commentsCount', 'likes', 'url', 'simulatorType',
+        'imageUrl', 'rating', 'ratingCount', 'ratingTotal', 'plays', 'commentsCount', 'likes', 'url', 'simulatorType',
         'creatorId', 'createdBy', 'createdAt', 'hidden', 'hiddenAt', 'hiddenBy', 'aiTools', 'aiUsage', 'aiNote'
       ])
       && request.resource.data.createdBy == request.auth.uid
@@ -34,8 +34,43 @@ service cloud.firestore {
       && request.resource.data.likes == 0
       && request.resource.data.plays == 0
       && request.resource.data.commentsCount == 0
-      && request.resource.data.rating == 5
+      && request.resource.data.ratingCount is int && request.resource.data.ratingCount == 0
+      && request.resource.data.ratingTotal is number && request.resource.data.ratingTotal == 0
+      && request.resource.data.rating is number && request.resource.data.rating == 0
       && request.resource.data.hidden == false;
+    }
+    function validRatingSummaryChange(projectId) {
+      let ratingPath = /databases/$(database)/documents/users/$(request.auth.uid)/ratings/$(projectId);
+      let hadRating = exists(ratingPath);
+      let oldValue = hadRating ? get(ratingPath).data.value : 0;
+      let newValue = getAfter(ratingPath).data.value;
+      let oldCount = resource.data.get('ratingCount', 0);
+      let oldTotal = resource.data.get('ratingTotal', 0);
+      let newCount = oldCount + (hadRating ? 0 : 1);
+      let newTotal = oldTotal - oldValue + newValue;
+      return signedIn()
+        && existsAfter(ratingPath)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'ratingCount', 'ratingTotal'])
+        && request.resource.data.ratingCount == newCount
+        && request.resource.data.ratingTotal == newTotal
+        && request.resource.data.rating == newTotal / newCount;
+    }
+    function validOwnCommentCountCreate(projectId) {
+      let commentPath = /databases/$(database)/documents/projects/$(projectId)/comments/$(request.auth.uid);
+      return signedIn()
+        && !exists(commentPath)
+        && existsAfter(commentPath)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount'])
+        && request.resource.data.commentsCount == resource.data.get('commentsCount', 0) + 1;
+    }
+    function validOwnCommentCountDelete(projectId) {
+      let commentPath = /databases/$(database)/documents/projects/$(projectId)/comments/$(request.auth.uid);
+      return signedIn()
+        && exists(commentPath)
+        && !existsAfter(commentPath)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount'])
+        && request.resource.data.commentsCount == resource.data.get('commentsCount', 0) - 1
+        && request.resource.data.commentsCount >= 0;
     }
     match /projects/{projectId} {
       allow read: if resource.data.hidden == false || isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
@@ -59,6 +94,44 @@ service cloud.firestore {
             && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/likes/$(projectId)))
         )
       );
+      allow update: if validRatingSummaryChange(projectId);
+      allow update: if validOwnCommentCountCreate(projectId) || validOwnCommentCountDelete(projectId);
+
+      match /comments/{commentId} {
+        function projectBefore() { return get(/databases/$(database)/documents/projects/$(projectId)); }
+        function projectAfter() { return getAfter(/databases/$(database)/documents/projects/$(projectId)); }
+        function validCommentFields() {
+          return request.resource.data.keys().hasOnly(['authorId', 'authorName', 'authorPhotoUrl', 'body', 'createdAt', 'updatedAt'])
+            && request.resource.data.keys().hasAll(['authorId', 'authorName', 'authorPhotoUrl', 'body', 'createdAt', 'updatedAt'])
+            && request.resource.data.authorId == request.auth.uid
+            && request.resource.data.authorName is string && request.resource.data.authorName.size() > 0 && request.resource.data.authorName.size() <= 80
+            && request.resource.data.authorPhotoUrl is string && request.resource.data.authorPhotoUrl.size() <= 2000
+            && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 500;
+        }
+        function pairedCommentCreate() {
+          return exists(/databases/$(database)/documents/projects/$(projectId))
+            && projectBefore().data.hidden == false
+            && projectAfter().data.diff(projectBefore().data).affectedKeys().hasOnly(['commentsCount'])
+            && projectAfter().data.commentsCount == projectBefore().data.get('commentsCount', 0) + 1;
+        }
+        function pairedCommentDelete() {
+          return exists(/databases/$(database)/documents/projects/$(projectId))
+            && projectAfter().data.diff(projectBefore().data).affectedKeys().hasOnly(['commentsCount'])
+            && projectAfter().data.commentsCount == projectBefore().data.get('commentsCount', 0) - 1
+            && projectAfter().data.commentsCount >= 0;
+        }
+        allow read: if true;
+        allow create: if signedIn() && commentId == request.auth.uid
+          && validCommentFields()
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && pairedCommentCreate();
+        allow update: if signedIn() && commentId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt'])
+          && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 500
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if isAdmin() || (signedIn() && commentId == request.auth.uid && pairedCommentDelete());
+      }
     }
     match /users/{uid}/likes/{projectId} {
       allow read: if signedIn() && request.auth.uid == uid;
@@ -69,11 +142,41 @@ service cloud.firestore {
       allow update: if false;
     }
     match /users/{uid}/ratings/{projectId} {
-      allow read, create, update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['projectId', 'value', 'createdAt'])
-        && request.resource.data.projectId == projectId
-        && request.resource.data.value == 5;
-      allow delete: if signedIn() && request.auth.uid == uid;
+      function projectBefore() { return get(/databases/$(database)/documents/projects/$(projectId)); }
+      function projectAfter() { return getAfter(/databases/$(database)/documents/projects/$(projectId)); }
+      function validRatingFields() {
+        return request.resource.data.keys().hasOnly(['projectId', 'value', 'createdAt', 'updatedAt'])
+          && request.resource.data.keys().hasAll(['projectId', 'value', 'createdAt', 'updatedAt'])
+          && request.resource.data.projectId == projectId
+          && request.resource.data.value is int && request.resource.data.value >= 1 && request.resource.data.value <= 5;
+      }
+      function pairedRatingChange() {
+        let hadRating = exists(/databases/$(database)/documents/users/$(uid)/ratings/$(projectId));
+        let oldValue = hadRating ? get(/databases/$(database)/documents/users/$(uid)/ratings/$(projectId)).data.value : 0;
+        let oldCount = projectBefore().data.get('ratingCount', 0);
+        let oldTotal = projectBefore().data.get('ratingTotal', 0);
+        let newCount = oldCount + (hadRating ? 0 : 1);
+        let newTotal = oldTotal - oldValue + request.resource.data.value;
+        return exists(/databases/$(database)/documents/projects/$(projectId))
+          && projectBefore().data.hidden == false
+          && projectAfter().data.diff(projectBefore().data).affectedKeys().hasOnly(['rating', 'ratingCount', 'ratingTotal'])
+          && projectAfter().data.ratingCount == newCount
+          && projectAfter().data.ratingTotal == newTotal
+          && projectAfter().data.rating == newTotal / newCount;
+      }
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && validRatingFields()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && pairedRatingChange();
+      allow update: if signedIn() && request.auth.uid == uid
+        && validRatingFields()
+        && request.resource.data.projectId == resource.data.projectId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && pairedRatingChange();
+      allow delete: if false;
     }
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
