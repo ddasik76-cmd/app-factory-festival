@@ -154,7 +154,7 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
           </div>
 
           <span className="px-2 py-0.5 rounded-md bg-[#e5eeff] text-[#3525cd] text-[11px] font-semibold whitespace-nowrap">
-            {app.tech}
+            {app.aiTools?.length ? `AI · ${app.aiTools[0]}${app.aiTools.length > 1 ? ` +${app.aiTools.length - 1}` : ''}` : '웹앱'}
           </span>
         </div>
       </div>

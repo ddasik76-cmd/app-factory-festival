@@ -15,7 +15,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { INITIAL_APPS } from './data/initialApps';
-import { AppProject } from './types';
+import { AppProject, ClubMember, ClubProfile, ClubSchedule, MemberRequest, MemberStatus } from './types';
 import { safeUrl } from './storage';
 
 const app = initializeApp({
@@ -35,6 +35,12 @@ provider.setCustomParameters({ prompt: 'select_account' });
 export const observeUser = (callback: (user: User | null) => void) => onAuthStateChanged(auth, callback);
 export const login = () => signInWithPopup(auth, provider);
 export const logout = () => signOut(auth);
+
+const SCHOOL_DOMAIN = '@g.cnees.kr';
+export const isSchoolAccount = (user: User | null) => {
+  const email = user?.email?.trim().toLowerCase() || '';
+  return !!user && user.emailVerified && email.endsWith(SCHOOL_DOMAIN);
+};
 
 const projectFields = (project: AppProject, creatorId: string) => ({
   title: project.title.trim().slice(0, 100),
@@ -58,6 +64,10 @@ const projectFields = (project: AppProject, creatorId: string) => ({
   simulatorType: project.simulatorType,
   hidden: project.hidden ?? false,
   creatorId,
+  createdBy: creatorId,
+  aiTools: project.aiTools || [],
+  aiUsage: project.aiUsage || [],
+  aiNote: project.aiNote || '',
   createdAt: serverTimestamp(),
 });
 
@@ -74,19 +84,23 @@ export function subscribeProjects(
   onChange: (projects: AppProject[]) => void,
   onError: (error: Error) => void,
 ) {
-  const results = new Map<string, AppProject>();
+  const sourceResults = new Map<number, Map<string, AppProject>>();
   const update = () => {
-    const projects = [...results.values()].sort((a, b) => a.id.localeCompare(b.id));
+    const merged = new Map<string, AppProject>();
+    sourceResults.forEach(items => items.forEach((project, id) => merged.set(id, project)));
+    const projects = [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
     onChange(projects.length ? projects : INITIAL_APPS.map(item => ({ ...item, isLiked: likedIds.has(item.id) })));
   };
   const queries = [query(collection(db, 'projects'), where('hidden', '==', false))];
   if (user) queries.push(query(collection(db, 'projects'), where('creatorId', '==', user.uid)));
   if (isAdmin) queries.push(collection(db, 'projects') as any);
-  const unsubs = queries.map(source => onSnapshot(source, snapshot => {
+  const unsubs = queries.map((source, index) => onSnapshot(source, snapshot => {
+    const current = new Map<string, AppProject>();
     snapshot.docs.forEach(item => {
       const project = asProject(item.id, item.data(), likedIds);
-      if (project) results.set(project.id, project);
+      if (project) current.set(project.id, project);
     });
+    sourceResults.set(index, current);
     update();
   }, onError));
   return () => unsubs.forEach(unsubscribe => unsubscribe());
@@ -96,6 +110,96 @@ export async function isAdminUser(user: User | null) {
   return !!user && (await getDoc(doc(db, 'admins', user.uid))).exists();
 }
 
+export function subscribeMembership(uid: string, onChange: (member: ClubMember | null) => void, onError: (error: Error) => void) {
+  return onSnapshot(doc(db, 'members', uid), snapshot => onChange(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as ClubMember) : null), onError);
+}
+
+export function subscribeMemberRequest(uid: string, onChange: (request: MemberRequest | null) => void, onError: (error: Error) => void) {
+  return onSnapshot(doc(db, 'memberRequests', uid), snapshot => onChange(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as MemberRequest) : null), onError);
+}
+
+export function subscribeMemberRequests(isAdmin: boolean, onChange: (requests: MemberRequest[]) => void, onError: (error: Error) => void) {
+  if (!isAdmin) { onChange([]); return () => undefined; }
+  return onSnapshot(collection(db, 'memberRequests'), snapshot => {
+    const requests = snapshot.docs
+      .map(item => ({ id: item.id, ...item.data() } as MemberRequest))
+      .sort((a, b) => String(a.requestedAt || '').localeCompare(String(b.requestedAt || '')));
+    onChange(requests);
+  }, onError);
+}
+
+export async function submitMemberRequest(user: User) {
+  if (!isSchoolAccount(user)) throw new Error('school-account-required');
+  const ref = doc(db, 'memberRequests', user.uid);
+  const existing = await getDoc(ref);
+  if (existing.exists() && ['pending', 'approved'].includes(String(existing.data().status))) return;
+  await setDoc(ref, {
+    email: user.email,
+    displayName: user.displayName || '학교 계정 사용자',
+    photoUrl: user.photoURL || '',
+    status: 'pending',
+    requestedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function reviewMemberRequest(request: MemberRequest, status: MemberStatus, admin: User) {
+  await updateDoc(doc(db, 'memberRequests', request.id), { status, reviewedAt: serverTimestamp(), reviewedBy: admin.uid });
+  if (status === 'approved') {
+    await setDoc(doc(db, 'members', request.id), {
+      name: request.displayName,
+      role: '동아리 멤버',
+      grade: '',
+      introduction: '',
+      photoUrl: request.photoUrl || '',
+      order: 999,
+      status: 'active',
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }
+  if (status === 'blocked') await setDoc(doc(db, 'members', request.id), { status: 'hidden', updatedAt: serverTimestamp() }, { merge: true });
+}
+
+const defaultClubProfile: ClubProfile = {
+  id: 'main', name: '앱팩토리 (AppFactory)', tagline: '상상을 코드로, 아이디어를 웹앱으로!',
+  description: '중학교 친구들이 자유롭게 모여 게임, AI 도구, 학사 편의 기능을 개발하고 공유하는 웹 개발 동아리입니다.',
+  festivalLabel: '🚀 2026 페스티벌',
+};
+
+export function subscribeClubProfile(onChange: (profile: ClubProfile) => void, onError: (error: Error) => void) {
+  return onSnapshot(doc(db, 'clubProfile', 'main'), snapshot => onChange(snapshot.exists() ? ({ id: 'main', ...snapshot.data() } as ClubProfile) : defaultClubProfile), onError);
+}
+
+export function subscribeClubSchedules(isAdmin: boolean, onChange: (items: ClubSchedule[]) => void, onError: (error: Error) => void) {
+  const source = isAdmin ? collection(db, 'clubSchedules') : query(collection(db, 'clubSchedules'), where('hidden', '==', false));
+  return onSnapshot(source, snapshot => onChange(snapshot.docs.map(item => ({ id: item.id, hidden: false, ...item.data() } as ClubSchedule)).sort((a, b) => a.order - b.order)), onError);
+}
+
+export function subscribeClubMembers(isAdmin: boolean, onChange: (items: ClubMember[]) => void, onError: (error: Error) => void) {
+  const source = isAdmin ? collection(db, 'members') : query(collection(db, 'members'), where('status', '==', 'active'));
+  return onSnapshot(source, snapshot => onChange(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as ClubMember)).filter(item => isAdmin || item.status === 'active').sort((a, b) => a.order - b.order)), onError);
+}
+
+export async function saveClubProfile(profile: Partial<ClubProfile>, admin: User) {
+  await setDoc(doc(db, 'clubProfile', 'main'), { ...profile, updatedAt: serverTimestamp(), updatedBy: admin.uid }, { merge: true });
+}
+
+export async function saveClubSchedule(item: Partial<ClubSchedule>, admin: User) {
+  const id = item.id || `schedule-${crypto.randomUUID()}`;
+  await setDoc(doc(db, 'clubSchedules', id), { title: item.title || '', date: item.date || '', location: item.location || '', description: item.description || '', order: item.order ?? 999, hidden: item.hidden ?? false, updatedAt: serverTimestamp(), updatedBy: admin.uid }, { merge: true });
+}
+
+export async function hideClubSchedule(id: string, admin: User) { await updateDoc(doc(db, 'clubSchedules', id), { hidden: true, hiddenAt: serverTimestamp(), hiddenBy: admin.uid }); }
+export async function restoreClubSchedule(id: string) { await updateDoc(doc(db, 'clubSchedules', id), { hidden: false, hiddenAt: null, hiddenBy: null }); }
+export async function deleteClubSchedule(id: string) { await deleteDoc(doc(db, 'clubSchedules', id)); }
+
+export async function saveClubMember(item: Partial<ClubMember>, admin: User) {
+  const id = item.id || `member-${crypto.randomUUID()}`;
+  await setDoc(doc(db, 'members', id), { name: item.name || '', role: item.role || '동아리 멤버', grade: item.grade || '', introduction: item.introduction || '', photoUrl: item.photoUrl || '', order: item.order ?? 999, status: item.status || 'active', updatedAt: serverTimestamp(), updatedBy: admin.uid }, { merge: true });
+}
+export async function hideClubMember(id: string, admin: User) { await updateDoc(doc(db, 'members', id), { status: 'hidden', hiddenAt: serverTimestamp(), hiddenBy: admin.uid }); }
+export async function restoreClubMember(id: string) { await updateDoc(doc(db, 'members', id), { status: 'active', hiddenAt: null, hiddenBy: null }); }
+export async function deleteClubMember(id: string) { await deleteDoc(doc(db, 'members', id)); }
+
 export function subscribeLikes(uid: string, onChange: (ids: Set<string>) => void, onError: (error: Error) => void) {
   return onSnapshot(collection(db, 'users', uid, 'likes'), snapshot => {
     onChange(new Set(snapshot.docs.map(item => item.id)));
@@ -104,7 +208,15 @@ export function subscribeLikes(uid: string, onChange: (ids: Set<string>) => void
 
 export async function seedInitialProjects(user: User) {
   await Promise.all(INITIAL_APPS.map(async project => {
-    try { await setDoc(doc(db, 'projects', project.id), projectFields({ ...project, rating: 5, plays: 0, commentsCount: 0, likes: 0 }, user.uid)); }
+    try {
+      await runTransaction(db, async transaction => {
+        const ref = doc(db, 'projects', project.id);
+        const existing = await transaction.get(ref);
+        if (!existing.exists()) {
+          transaction.set(ref, projectFields({ ...project, rating: 5, plays: 0, commentsCount: 0, likes: 0 }, user.uid));
+        }
+      });
+    }
     catch (error: any) { if (error?.code !== 'permission-denied') throw error; }
   }));
 }

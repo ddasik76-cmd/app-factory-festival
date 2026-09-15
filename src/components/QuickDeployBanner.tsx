@@ -11,6 +11,8 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
   const [category, setCategory] = useState<'game' | 'ai' | 'study' | 'fun'>('game');
   const [appTitle, setAppTitle] = useState('');
   const [appUrl, setAppUrl] = useState('');
+  const [aiTools, setAiTools] = useState<string[]>([]);
+  const aiOptions = ['ChatGPT', 'Claude', 'Gemini', 'Cursor', '기타'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +42,16 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
       imageUrl: defaultImages[category],
       url: appUrl,
       simulatorType: 'generic',
+      aiTools,
+      aiUsage: [],
+      aiNote: '',
     });
     if (!saved) return;
 
     setAppTitle('');
     setDevName('');
     setAppUrl('');
+    setAiTools([]);
   };
 
   return (
@@ -69,7 +75,7 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
         </div>
 
         <p className="text-xs text-[#d3e4fe]/80 mb-3 leading-relaxed">
-          Google 로그인 후 제목, 개발자, URL을 입력하면 모든 방문자에게 실시간으로 표시됩니다.
+          관리자가 제목, 작성자, URL을 입력하면 모든 방문자에게 실시간으로 표시됩니다.
         </p>
 
         <form id="quick-admin-form" onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -94,6 +100,13 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
               <option value="study">📚 공부도우미</option>
               <option value="fun">🎨 힐링/재미</option>
             </select>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {aiOptions.map(tool => <label key={tool} className={`px-2 py-1 rounded-md border text-[10px] font-semibold cursor-pointer ${aiTools.includes(tool) ? 'bg-[#57dffe] text-[#006172] border-[#57dffe]' : 'bg-white/10 text-white/80 border-white/10'}`}>
+              <input type="checkbox" className="sr-only" checked={aiTools.includes(tool)} onChange={() => setAiTools(current => current.includes(tool) ? current.filter(item => item !== tool) : [...current, tool])} />
+              {tool}
+            </label>)}
           </div>
 
           <div className="flex gap-2">

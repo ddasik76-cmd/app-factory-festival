@@ -1,97 +1,54 @@
-import React from 'react';
-import { Users, Code, Calendar, Sparkles, Laptop, ShieldCheck, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Calendar, Sparkles, ShieldCheck, Pencil, Plus, EyeOff, RotateCcw, Trash2, Save } from 'lucide-react';
+import { ClubMember, ClubProfile, ClubSchedule } from '../types';
 
-export const AboutClubView: React.FC = () => {
-  const members = [
-    { name: '이준서 (3학년)', role: '동아리 부장 & 게임 개발 리드', badge: 'JavaScript / Canvas', icon: '준' },
-    { name: '강도윤 (3학년)', role: '네트워크 & 백엔드 엔지니어', badge: 'Socket.io / Node.js', icon: '도' },
-    { name: '박서연 (2학년)', role: '부부장 & 프론트엔드 UI/UX', badge: 'React / Open API', icon: '서' },
-    { name: '최유나 (2학년)', role: 'AI 프롬프트 & 모델 연동 리드', badge: 'Gemini AI / Vue', icon: '유' },
-    { name: '정태현 (1학년)', role: '오디오 코딩 & 사운드 디자인', badge: 'Web Audio API', icon: '태' },
-  ];
+interface Props {
+  profile: ClubProfile | null;
+  schedules: ClubSchedule[];
+  members: ClubMember[];
+  isAdmin: boolean;
+  onSaveProfile: (profile: Partial<ClubProfile>) => Promise<void>;
+  onSaveSchedule: (item: Partial<ClubSchedule>) => Promise<void>;
+  onHideSchedule: (id: string) => Promise<void>;
+  onRestoreSchedule: (id: string) => Promise<void>;
+  onDeleteSchedule: (id: string) => Promise<void>;
+  onSaveMember: (item: Partial<ClubMember>) => Promise<void>;
+  onHideMember: (id: string) => Promise<void>;
+  onRestoreMember: (id: string) => Promise<void>;
+  onDeleteMember: (id: string) => Promise<void>;
+}
 
-  return (
-    <div className="flex flex-col gap-5 px-4 py-4 max-w-lg mx-auto pb-24 animate-in fade-in duration-300">
-      {/* Club Intro Header */}
-      <div className="p-5 rounded-2xl bg-gradient-to-br from-[#3525cd] to-[#4f46e5] text-white shadow-md">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="px-2.5 py-1 rounded-full bg-white/20 text-[#acedff] text-xs font-bold">
-            🚀 2026 페스티벌
-          </span>
-          <span className="text-xs text-white/80">코딩 창작 동아리</span>
-        </div>
-        <h2 className="text-2xl font-black tracking-tight">
-          앱팩토리 (AppFactory)
-        </h2>
-        <p className="text-xs text-[#d3e4fe] mt-1.5 leading-relaxed">
-          &quot;상상을 코드로, 아이디어를 웹앱으로!&quot;<br />
-          중학교 친구들이 자유롭게 모여 게임, AI 도구, 학사 편의 기능을 개발하고 공유하는 웹 개발 동아리입니다.
-        </p>
-      </div>
+const fallbackProfile: ClubProfile = { id: 'main', name: '앱팩토리 (AppFactory)', tagline: '상상을 코드로, 아이디어를 웹앱으로!', festivalLabel: '🚀 2026 페스티벌', description: '중학교 친구들이 자유롭게 모여 게임, AI 도구, 학사 편의 기능을 개발하고 공유하는 웹 개발 동아리입니다.' };
 
-      {/* Festival Schedule */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-[#3525cd]" />
-          <h3 className="text-base font-bold text-[#0b1c30]">2026 교내 페스티벌 일정</h3>
-        </div>
-        <div className="flex flex-col gap-2 text-xs text-[#464555]">
-          <div className="flex items-start gap-2 p-2 rounded-xl bg-slate-50">
-            <span className="px-2 py-0.5 rounded-md bg-[#e5eeff] text-[#3525cd] font-bold">전시</span>
-            <span>1학기 교내 과학/정보 축전 웹앱 체험 부스 운영 (컴퓨터실 1)</span>
-          </div>
-          <div className="flex items-start gap-2 p-2 rounded-xl bg-slate-50">
-            <span className="px-2 py-0.5 rounded-md bg-[#57dffe] text-[#006172] font-bold">투표</span>
-            <span>전교생 인기 투표 진행 중! 마음에 드는 작품에 하트를 눌러주세요.</span>
-          </div>
-        </div>
-      </div>
+export const AboutClubView: React.FC<Props> = ({ profile, schedules, members, isAdmin, onSaveProfile, onSaveSchedule, onHideSchedule, onRestoreSchedule, onDeleteSchedule, onSaveMember, onHideMember, onRestoreMember, onDeleteMember }) => {
+  const current = profile || fallbackProfile;
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState(current);
+  const [scheduleDraft, setScheduleDraft] = useState<Partial<ClubSchedule> | null>(null);
+  const [memberDraft, setMemberDraft] = useState<Partial<ClubMember> | null>(null);
+  const visibleSchedules = schedules.filter(item => isAdmin || !item.hidden);
+  const visibleMembers = members.filter(item => isAdmin || item.status === 'active');
 
-      {/* Tech Stack Chips */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-2.5">
-        <div className="flex items-center gap-2">
-          <Code className="w-5 h-5 text-[#00687a]" />
-          <h3 className="text-base font-bold text-[#0b1c30]">동아리 핵심 기술 스택</h3>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {['React', 'TypeScript', 'Tailwind CSS', 'HTML5 Canvas', 'Web Audio API', 'Gemini AI', 'Socket.io', 'Node.js', 'NEIS Open API'].map(
-            (tech) => (
-              <span
-                key={tech}
-                className="px-2.5 py-1 rounded-lg bg-[#eff4ff] text-[#3525cd] text-xs font-semibold"
-              >
-                {tech}
-              </span>
-            )
-          )}
-        </div>
-      </div>
+  const saveProfile = async () => { await onSaveProfile({ name: profileDraft.name, tagline: profileDraft.tagline, description: profileDraft.description, festivalLabel: profileDraft.festivalLabel }); setEditingProfile(false); };
+  const saveSchedule = async () => { if (!scheduleDraft?.title?.trim()) return; await onSaveSchedule(scheduleDraft); setScheduleDraft(null); };
+  const saveMember = async () => { if (!memberDraft?.name?.trim()) return; await onSaveMember(memberDraft); setMemberDraft(null); };
 
-      {/* Member Cards */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-[#8f1721]" />
-          <h3 className="text-base font-bold text-[#0b1c30]">동아리 핵심 멤버들</h3>
-        </div>
-        <div className="flex flex-col gap-2">
-          {members.map((m, idx) => (
-            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[#3525cd] text-white font-bold text-xs flex items-center justify-center">
-                  {m.icon}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[#0b1c30]">{m.name}</span>
-                  <span className="text-[11px] text-[#464555]">{m.role}</span>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded-md bg-[#dce9ff] text-[#3525cd] text-[10px] font-bold">
-                {m.badge}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+  return <div className="flex flex-col gap-5 px-4 py-4 max-w-lg mx-auto pb-24 animate-in fade-in duration-300">
+    <div className="p-5 rounded-2xl bg-gradient-to-br from-[#3525cd] to-[#4f46e5] text-white shadow-md">
+      <div className="flex items-center justify-between gap-2 mb-2"><span className="px-2.5 py-1 rounded-full bg-white/20 text-[#acedff] text-xs font-bold">{current.festivalLabel}</span>{isAdmin && <button type="button" onClick={() => { setProfileDraft(current); setEditingProfile(true); }} className="px-2 py-1 rounded-lg bg-white/15 text-xs font-bold flex items-center gap-1"><Pencil className="w-3 h-3" /> 편집</button>}</div>
+      {editingProfile ? <div className="flex flex-col gap-2"><input value={profileDraft.name} onChange={e => setProfileDraft({ ...profileDraft, name: e.target.value })} className="h-10 rounded-lg px-3 text-sm text-[#0b1c30]" placeholder="동아리 이름" /><input value={profileDraft.tagline} onChange={e => setProfileDraft({ ...profileDraft, tagline: e.target.value })} className="h-10 rounded-lg px-3 text-sm text-[#0b1c30]" placeholder="한 줄 소개" /><textarea value={profileDraft.description} onChange={e => setProfileDraft({ ...profileDraft, description: e.target.value })} className="rounded-lg p-3 text-sm text-[#0b1c30]" rows={3} placeholder="동아리 설명" /><div className="flex gap-2"><button type="button" onClick={() => void saveProfile()} className="flex-1 py-2 rounded-lg bg-white text-[#3525cd] text-xs font-bold flex items-center justify-center gap-1"><Save className="w-3 h-3" /> 저장</button><button type="button" onClick={() => setEditingProfile(false)} className="px-3 py-2 rounded-lg bg-white/15 text-xs font-bold">취소</button></div></div> : <><h2 className="text-2xl font-black tracking-tight">{current.name}</h2><p className="text-sm font-semibold text-[#d3e4fe] mt-1">{current.tagline}</p><p className="text-xs text-[#d3e4fe] mt-2 leading-relaxed">{current.description}</p></>}
     </div>
-  );
+
+    <section className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Calendar className="w-5 h-5 text-[#3525cd]" /><h3 className="text-base font-bold text-[#0b1c30]">동아리 일정</h3></div>{isAdmin && <button type="button" onClick={() => setScheduleDraft({ title: '', date: '', location: '', description: '', order: schedules.length + 1, hidden: false })} className="text-xs rounded-lg bg-[#e5eeff] px-2.5 py-1.5 text-[#3525cd] font-bold flex items-center gap-1"><Plus className="w-3 h-3" /> 추가</button>}</div>
+      {scheduleDraft && <div className="p-3 rounded-xl bg-slate-50 flex flex-col gap-2"><input value={scheduleDraft.title || ''} onChange={e => setScheduleDraft({ ...scheduleDraft, title: e.target.value })} placeholder="일정 제목" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><input value={scheduleDraft.date || ''} onChange={e => setScheduleDraft({ ...scheduleDraft, date: e.target.value })} placeholder="날짜·시간" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><input value={scheduleDraft.location || ''} onChange={e => setScheduleDraft({ ...scheduleDraft, location: e.target.value })} placeholder="장소" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><textarea value={scheduleDraft.description || ''} onChange={e => setScheduleDraft({ ...scheduleDraft, description: e.target.value })} placeholder="설명" className="rounded-lg border border-slate-200 p-2 text-xs" rows={2} /><div className="flex gap-2"><button type="button" onClick={() => void saveSchedule()} className="flex-1 py-2 rounded-lg bg-[#3525cd] text-white text-xs font-bold">저장</button><button type="button" onClick={() => setScheduleDraft(null)} className="px-3 rounded-lg bg-slate-200 text-xs font-bold">취소</button></div></div>}
+      <div className="flex flex-col gap-2 text-xs text-[#464555]">{visibleSchedules.length ? visibleSchedules.map(item => <div key={item.id} className={`flex items-start gap-2 p-2 rounded-xl ${item.hidden ? 'bg-amber-50' : 'bg-slate-50'}`}><span className="px-2 py-0.5 rounded-md bg-[#e5eeff] text-[#3525cd] font-bold">{item.date || '일정'}</span><div className="flex-1"><p className="font-bold text-[#0b1c30]">{item.title}</p><p>{item.location}{item.description ? ` · ${item.description}` : ''}</p></div>{isAdmin && <div className="flex gap-1">{item.hidden ? <button type="button" onClick={() => void onRestoreSchedule(item.id)} title="복구" className="p-1 text-emerald-700"><RotateCcw className="w-3.5 h-3.5" /></button> : <button type="button" onClick={() => void onHideSchedule(item.id)} title="숨김" className="p-1 text-amber-700"><EyeOff className="w-3.5 h-3.5" /></button>}<button type="button" onClick={() => setScheduleDraft(item)} title="수정" className="p-1 text-[#3525cd]"><Pencil className="w-3.5 h-3.5" /></button>{item.hidden && <button type="button" onClick={() => void onDeleteSchedule(item.id)} title="영구 삭제" className="p-1 text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>}</div>}</div>) : <p className="p-3 rounded-xl bg-slate-50">등록된 일정이 없습니다.</p>}</div>
+    </section>
+
+    <section className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Users className="w-5 h-5 text-[#8f1721]" /><h3 className="text-base font-bold text-[#0b1c30]">동아리 핵심 멤버</h3></div>{isAdmin && <button type="button" onClick={() => setMemberDraft({ name: '', role: '동아리 멤버', grade: '', introduction: '', order: members.length + 1, status: 'active' })} className="text-xs rounded-lg bg-[#e5eeff] px-2.5 py-1.5 text-[#3525cd] font-bold flex items-center gap-1"><Plus className="w-3 h-3" /> 추가</button>}</div>
+      {memberDraft && <div className="p-3 rounded-xl bg-slate-50 flex flex-col gap-2"><input value={memberDraft.name || ''} onChange={e => setMemberDraft({ ...memberDraft, name: e.target.value })} placeholder="이름" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><input value={memberDraft.role || ''} onChange={e => setMemberDraft({ ...memberDraft, role: e.target.value })} placeholder="역할" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><input value={memberDraft.grade || ''} onChange={e => setMemberDraft({ ...memberDraft, grade: e.target.value })} placeholder="학년·반" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><input value={memberDraft.introduction || ''} onChange={e => setMemberDraft({ ...memberDraft, introduction: e.target.value })} placeholder="한 줄 소개" className="h-9 rounded-lg border border-slate-200 px-2 text-xs" /><div className="flex gap-2"><button type="button" onClick={() => void saveMember()} className="flex-1 py-2 rounded-lg bg-[#3525cd] text-white text-xs font-bold">저장</button><button type="button" onClick={() => setMemberDraft(null)} className="px-3 rounded-lg bg-slate-200 text-xs font-bold">취소</button></div></div>}
+      <div className="flex flex-col gap-2">{visibleMembers.length ? visibleMembers.map(item => <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-xl ${item.status === 'hidden' ? 'bg-amber-50' : 'bg-slate-50'}`}><div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 rounded-full bg-[#3525cd] text-white font-bold text-xs flex items-center justify-center">{item.name.slice(-1) || '멤'}</div><div className="flex flex-col min-w-0"><span className="text-xs font-bold text-[#0b1c30] truncate">{item.name}{item.grade ? ` (${item.grade})` : ''}</span><span className="text-[11px] text-[#464555] truncate">{item.role}{item.introduction ? ` · ${item.introduction}` : ''}</span></div></div>{isAdmin && <div className="flex gap-1">{item.status === 'hidden' ? <button type="button" onClick={() => void onRestoreMember(item.id)} title="복구" className="p-1 text-emerald-700"><RotateCcw className="w-3.5 h-3.5" /></button> : <button type="button" onClick={() => void onHideMember(item.id)} title="숨김" className="p-1 text-amber-700"><EyeOff className="w-3.5 h-3.5" /></button>}<button type="button" onClick={() => setMemberDraft(item)} title="수정" className="p-1 text-[#3525cd]"><Pencil className="w-3.5 h-3.5" /></button>{item.status === 'hidden' && <button type="button" onClick={() => void onDeleteMember(item.id)} title="영구 삭제" className="p-1 text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>}</div>}</div>) : <p className="p-3 rounded-xl bg-slate-50 text-xs text-[#464555]">등록된 핵심 멤버가 없습니다.</p>}</div>
+    </section>
+
+    <section className="p-4 rounded-2xl bg-[#eff4ff] border border-[#d3e4fe] flex items-start gap-2"><Sparkles className="w-5 h-5 text-[#00687a] flex-shrink-0" /><div><h3 className="text-sm font-bold text-[#0b1c30]">사용 AI 도구</h3><p className="text-xs text-[#464555] mt-1 leading-relaxed">작품 등록 때 입력한 AI 도구가 공개 작품 기준으로 자동 집계됩니다.</p></div><ShieldCheck className="w-4 h-4 text-[#3525cd] ml-auto" /></section>
+  </div>;
 };

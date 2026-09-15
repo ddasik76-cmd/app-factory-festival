@@ -18,9 +18,9 @@ import { RankingsView } from './components/RankingsView';
 import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
 import { safeUrl } from './storage';
-import { createProject, hideProject, isAdminUser, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, seedInitialProjects, subscribeLikes, subscribeProjects, toggleProjectLike } from './firebase';
+import { createProject, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, seedInitialProjects, subscribeLikes, subscribeProjects, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
 import { useModal } from './useModal';
-import { AppProject, Category, ActiveTab } from './types';
+import { AppProject, Category, ActiveTab, ClubMember, ClubProfile, ClubSchedule, MemberRequest } from './types';
 import { INITIAL_APPS } from './data/initialApps';
 import { X, LogOut } from 'lucide-react';
 
@@ -30,6 +30,12 @@ export default function App() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [membership, setMembership] = useState<ClubMember | null>(null);
+  const [memberRequest, setMemberRequest] = useState<MemberRequest | null>(null);
+  const [memberRequests, setMemberRequests] = useState<MemberRequest[]>([]);
+  const [clubProfile, setClubProfile] = useState<ClubProfile | null>(null);
+  const [clubSchedules, setClubSchedules] = useState<ClubSchedule[]>([]);
+  const [clubMembers, setClubMembers] = useState<ClubMember[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('gallery');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,9 +49,27 @@ export default function App() {
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
   useEffect(() => observeUser(nextUser => {
     setUser(nextUser);
+    setMembership(null); setMemberRequest(null);
     void isAdminUser(nextUser).then(setIsAdmin).catch(() => setIsAdmin(false));
     if (nextUser) void seedInitialProjects(nextUser).catch(() => undefined);
   }), []);
+  useEffect(() => {
+    if (!user) return;
+    const unsubs = [
+      subscribeMembership(user.uid, setMembership, () => undefined),
+      subscribeMemberRequest(user.uid, setMemberRequest, () => undefined),
+    ];
+    return () => unsubs.forEach(unsub => unsub());
+  }, [user]);
+  useEffect(() => subscribeMemberRequests(isAdmin, setMemberRequests, () => setMemberRequests([])), [isAdmin]);
+  useEffect(() => {
+    const unsubs = [
+      subscribeClubProfile(setClubProfile, () => setClubProfile(null)),
+      subscribeClubSchedules(isAdmin, setClubSchedules, () => setClubSchedules([])),
+      subscribeClubMembers(isAdmin, setClubMembers, () => setClubMembers([])),
+    ];
+    return () => unsubs.forEach(unsub => unsub());
+  }, [isAdmin]);
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); return; }
     return subscribeLikes(user.uid, setLikedIds, () => showToast('응원 정보를 불러오지 못했습니다.'));
@@ -97,9 +121,13 @@ export default function App() {
       return null;
     }
   };
+  const canRegister = !!user && (isAdmin || membership?.status === 'active');
   const openRegister = async () => {
     const signedInUser = await requireLogin();
-    if (signedInUser) setIsRegisterModalOpen(true);
+    if (!signedInUser) return;
+    if (!isSchoolAccount(signedInUser)) { showToast('학교 계정(@g.cnees.kr)으로 로그인해주세요.'); return; }
+    if (!isAdmin && membership?.status !== 'active') { showToast(memberRequest?.status === 'pending' ? '관리자 승인 후 작품을 등록할 수 있습니다.' : '동아리 멤버 승인 후 작품을 등록할 수 있습니다.'); return; }
+    setIsRegisterModalOpen(true);
   };
   const handleToggleLike = async (appId: string) => {
     const signedInUser = await requireLogin();
@@ -133,6 +161,7 @@ export default function App() {
     newApp: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>
   ) => {
     if (!user) { showToast('작품을 등록하려면 Google 로그인이 필요합니다.'); return Promise.resolve(false); }
+    if (!isAdmin && membership?.status !== 'active') { showToast('승인된 동아리 멤버만 작품을 등록할 수 있습니다.'); return Promise.resolve(false); }
     const url = safeUrl(newApp.url);
     if (!url || !newApp.title.trim() || !newApp.authorName.trim()) { showToast('제목, 개발자와 올바른 HTTP(S) 주소를 입력해주세요.'); return false; }
     const fullApp: AppProject = {
@@ -143,12 +172,22 @@ export default function App() {
       commentsCount: 0,
       likes: 0,
       isLiked: false,
+      aiTools: newApp.aiTools || [],
+      aiUsage: newApp.aiUsage || [],
+      aiNote: newApp.aiNote || '',
     };
     return createProject(fullApp, user).then(() => {
       setActiveTab('gallery'); setSelectedCategory('all'); setSearchQuery('');
       showToast('작품을 공용 갤러리에 등록했습니다.');
       return true;
     }).catch(() => { showToast('작품을 등록하지 못했습니다. 입력값과 권한을 확인해주세요.'); return false; });
+  };
+
+  const handleMemberRequest = async () => {
+    if (!user) { await requireLogin(); return; }
+    if (!isSchoolAccount(user)) { showToast('학교 계정(@g.cnees.kr)으로 로그인해주세요.'); return; }
+    try { await submitMemberRequest(user); showToast('멤버 승인 요청을 보냈습니다.'); }
+    catch { showToast('승인 요청을 보내지 못했습니다.'); }
   };
 
   const handleRandomPlay = () => {
@@ -164,6 +203,7 @@ export default function App() {
         user={user}
         onOpenRegister={() => void openRegister()}
         onOpenProfile={() => user ? setIsProfileModalOpen(true) : void requireLogin()}
+        canRegister={canRegister}
       />
 
       {/* Main Content Area */}
@@ -187,10 +227,7 @@ export default function App() {
               onSelectCategory={setSelectedCategory}
             />
 
-            <p className="px-4 text-xs text-slate-500">작품과 응원은 공용 갤러리에 실시간으로 반영됩니다. 등록과 응원에는 Google 로그인이 필요합니다.</p>
-            {/* Quick Admin Deployment Card */}
-            <QuickDeployBanner onQuickDeploy={handleQuickDeploy} />
-
+            <p className="px-4 text-xs text-slate-500">작품과 응원은 공용 갤러리에 실시간으로 반영됩니다. 작품 등록은 승인된 동아리 멤버와 관리자만 할 수 있습니다.</p>
             {/* Project Cards Feed */}
             <section className="px-4 py-3 flex flex-col gap-4" id="showcase-container">
               <div className="flex items-center justify-between">
@@ -239,12 +276,12 @@ export default function App() {
             </section>
 
             {/* Community Hall of Fame Mini Section */}
-            <HallOfFame
+            {apps.some((a) => a.id === 'app-5' && !a.hidden) && <HallOfFame
               onSelectVocabWars={() => {
-                const vocabApp = apps.find((a) => a.id === 'app-5');
+                const vocabApp = apps.find((a) => a.id === 'app-5' && !a.hidden);
                 if (vocabApp) setSelectedApp(vocabApp);
               }}
-            />
+            />}
           </div>
         )}
 
@@ -267,22 +304,23 @@ export default function App() {
                 </span>
                 <h2 className="text-lg font-bold text-[#0b1c30]">새 웹앱 등록</h2>
               </div>
-              <p className="text-xs text-[#464555] leading-relaxed">
-                Google 로그인 후 작품을 등록하면 모든 방문자의 갤러리에 실시간으로 표시됩니다.
-              </p>
-              <button
-                type="button"
-                onClick={() => void openRegister()}
-                className="w-full py-3.5 rounded-xl bg-[#3525cd] text-white text-sm font-bold shadow-md hover:bg-[#281ca3] transition-all cursor-pointer"
-              >
-                작품 등록 양식 열기
-              </button>
+              {isAdmin ? <>
+                <p className="text-xs text-[#464555] leading-relaxed">관리자는 일반 등록과 빠른 등록을 모두 사용할 수 있습니다.</p>
+                <button type="button" onClick={() => void openRegister()} className="w-full py-3.5 rounded-xl bg-[#3525cd] text-white text-sm font-bold shadow-md hover:bg-[#281ca3] transition-all cursor-pointer">작품 등록 양식 열기</button>
+                <QuickDeployBanner onQuickDeploy={handleQuickDeploy} />
+              </> : membership?.status === 'active' ? <>
+                <p className="text-xs text-[#464555] leading-relaxed">승인된 동아리 멤버만 작품을 등록할 수 있습니다.</p>
+                <button type="button" onClick={() => void openRegister()} className="w-full py-3.5 rounded-xl bg-[#3525cd] text-white text-sm font-bold shadow-md hover:bg-[#281ca3] transition-all cursor-pointer">작품 등록 양식 열기</button>
+              </> : <>
+                <p className="text-xs text-[#464555] leading-relaxed">학교 계정으로 로그인한 뒤 멤버 승인을 받으면 작품을 등록할 수 있습니다.</p>
+                <button type="button" onClick={() => void handleMemberRequest()} className="w-full py-3.5 rounded-xl bg-[#e5eeff] text-[#3525cd] text-sm font-bold hover:bg-[#dce9ff] transition-all cursor-pointer">멤버 승인 요청</button>
+              </>}
             </div>
           </div>
         )}
 
         {/* Tab 4: About Club */}
-        {activeTab === 'about' && <AboutClubView />}
+        {activeTab === 'about' && <AboutClubView profile={clubProfile} schedules={clubSchedules} members={clubMembers} isAdmin={isAdmin} onSaveProfile={profile => user ? saveClubProfile(profile, user) : Promise.reject()} onSaveSchedule={item => user ? saveClubSchedule(item, user) : Promise.reject()} onHideSchedule={id => user ? hideClubSchedule(id, user) : Promise.reject()} onRestoreSchedule={id => restoreClubSchedule(id)} onDeleteSchedule={id => deleteClubSchedule(id)} onSaveMember={item => user ? saveClubMember(item, user) : Promise.reject()} onHideMember={id => user ? hideClubMember(id, user) : Promise.reject()} onRestoreMember={id => restoreClubMember(id)} onDeleteMember={id => deleteClubMember(id)} />}
       </main>
 
       {/* Interactive WebApp Simulation Runner Modal */}
@@ -335,10 +373,17 @@ export default function App() {
                   {user?.email || ''}
                 </span>
                 <span className="text-[11px] text-[#00687a] font-semibold mt-0.5">
-                  공용 갤러리 사용자
+                  {isAdmin ? '관리자' : membership?.status === 'active' ? '승인된 동아리 멤버' : memberRequest?.status === 'pending' ? '멤버 승인 대기 중' : '학교 계정 사용자'}
                 </span>
               </div>
             </div>
+
+            {!isAdmin && membership?.status !== 'active' && <button type="button" onClick={() => void handleMemberRequest()} className="w-full py-2.5 rounded-xl bg-[#e5eeff] text-[#3525cd] text-xs font-bold hover:bg-[#dce9ff]">{memberRequest?.status === 'pending' ? '승인 요청이 처리 중입니다' : '동아리 멤버 승인 요청'}</button>}
+
+            {isAdmin && <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">
+              <p className="text-xs font-extrabold text-[#0b1c30]">멤버 승인 요청 {memberRequests.filter(item => item.status === 'pending').length ? `(${memberRequests.filter(item => item.status === 'pending').length})` : ''}</p>
+              {memberRequests.length === 0 ? <p className="text-xs text-[#464555]">대기 중인 요청이 없습니다.</p> : memberRequests.map(request => <div key={request.id} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50"><div className="min-w-0 flex-1"><p className="text-xs font-bold truncate">{request.displayName}</p><p className="text-[10px] text-[#464555] truncate">{request.email} · {request.status}</p></div>{request.status === 'pending' && <div className="flex gap-1"><button type="button" onClick={() => user && void reviewMemberRequest(request, 'approved', user)} className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-bold">승인</button><button type="button" onClick={() => user && void reviewMemberRequest(request, 'rejected', user)} className="px-2 py-1 rounded-lg bg-red-100 text-red-800 text-[10px] font-bold">거절</button></div>}</div>)}
+            </div>}
 
             <button
               type="button"

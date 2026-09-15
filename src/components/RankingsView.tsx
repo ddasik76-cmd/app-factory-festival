@@ -10,7 +10,7 @@ interface RankingsViewProps {
 
 export const RankingsView: React.FC<RankingsViewProps> = ({ apps, onOpenApp, onToggleLike }) => {
   // Sort by plays + likes
-  const sortedApps = [...apps].sort((a, b) => (b.plays + b.likes * 2) - (a.plays + a.likes * 2));
+  const sortedApps = apps.filter(app => !app.hidden).sort((a, b) => (b.plays + b.likes * 2) - (a.plays + a.likes * 2));
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) {
@@ -122,7 +122,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ apps, onOpenApp, onT
                   </h4>
                 </div>
                 <p className="text-xs text-[#464555] truncate">
-                  {app.authorName} • {app.tech}
+                  {app.authorName} • {app.aiTools?.length ? `AI ${app.aiTools[0]}` : '웹앱'}
                 </p>
                 <div className="flex items-center gap-3 text-[11px] text-[#464555] mt-1">
                   <span className="flex items-center gap-1 text-[#3525cd] font-bold">

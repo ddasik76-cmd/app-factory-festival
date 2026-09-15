@@ -6,9 +6,10 @@ interface HeaderProps {
   onOpenRegister: () => void;
   onOpenProfile: () => void;
   user: User | null;
+  canRegister?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, user }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, user, canRegister }) => {
   return (
     <header className="fixed top-0 w-full z-40 bg-[#f8f9ff]/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe">
       <div className="h-16 px-4 flex items-center justify-between gap-2 max-w-5xl mx-auto">
@@ -35,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, u
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          {canRegister && <button
             id="header-new-app-btn"
             onClick={onOpenRegister}
             className="h-9 px-3 rounded-full bg-[#4f46e5] text-white flex items-center gap-1.5 text-xs font-bold hover:bg-[#3525cd] transition-all active:scale-95 shadow-[0_4px_12px_rgba(79,70,229,0.25)]"
@@ -43,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, u
           >
             <Plus className="w-4 h-4" />
             <span>새 작품</span>
-          </button>
+          </button>}
           
           <button
             id="header-profile-btn"

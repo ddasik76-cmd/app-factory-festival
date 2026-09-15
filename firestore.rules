@@ -5,14 +5,26 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+    function isSchoolAccount() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@g\\.cnees\\.kr')
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function isApprovedMember() {
+      return isSchoolAccount()
+        && exists(/databases/$(database)/documents/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.status == 'active';
+    }
     function validProject() {
       return request.resource.data.keys().hasOnly([
         'title', 'description', 'category', 'tech', 'badges', 'actionText', 'actionIcon',
         'actionBgColor', 'authorName', 'authorRole', 'authorInitial', 'authorInitialBg',
         'imageUrl', 'rating', 'plays', 'commentsCount', 'likes', 'url', 'simulatorType',
-        'creatorId', 'createdAt', 'hidden', 'hiddenAt', 'hiddenBy'
+        'creatorId', 'createdBy', 'createdAt', 'hidden', 'hiddenAt', 'hiddenBy', 'aiTools', 'aiUsage', 'aiNote'
       ])
-      && request.resource.data.creatorId == request.auth.uid
+      && request.resource.data.createdBy == request.auth.uid
+      && (isAdmin() || (isApprovedMember() && request.resource.data.creatorId == request.auth.uid))
       && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
       && request.resource.data.description is string && request.resource.data.description.size() <= 500
       && request.resource.data.authorName is string && request.resource.data.authorName.size() > 0 && request.resource.data.authorName.size() <= 80
@@ -27,7 +39,7 @@ service cloud.firestore {
     }
     match /projects/{projectId} {
       allow read: if resource.data.hidden == false || isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
-      allow create: if signedIn() && validProject();
+      allow create: if validProject();
       allow delete: if isAdmin();
       allow update: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenAt', 'hiddenBy'])
@@ -66,6 +78,28 @@ service cloud.firestore {
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow write: if false;
+    }
+    match /memberRequests/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if isSchoolAccount() && signedIn() && request.auth.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if isAdmin() || (isSchoolAccount() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'requestedAt', 'displayName', 'photoUrl', 'email'])
+        && request.resource.data.status == 'pending');
+      allow delete: if isAdmin();
+    }
+    match /members/{uid} {
+      allow read: if resource.data.status == 'active' || isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update, delete: if isAdmin();
+    }
+    match /clubProfile/{profileId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /clubSchedules/{scheduleId} {
+      allow read: if resource.data.hidden == false || isAdmin();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

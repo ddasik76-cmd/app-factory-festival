@@ -15,6 +15,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
   const [category, setCategory] = useState<'game' | 'ai' | 'study' | 'fun'>('game');
   const [url, setUrl] = useState('');
   const [desc, setDesc] = useState('');
+  const [aiTools, setAiTools] = useState<string[]>([]);
+  const aiOptions = ['ChatGPT', 'Claude', 'Gemini', 'Cursor', 'GitHub Copilot', 'Replit', 'v0'];
 
   useModal(isOpen, 'full-register-modal', onClose);
   if (!isOpen) return null;
@@ -35,6 +37,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
       description: desc || `${dev} 친구가 개발한 동아리 프로젝트입니다.`,
       category,
       tech: category === 'ai' ? 'Gemini AI • Web' : category === 'game' ? 'HTML5 Canvas' : 'React • Web',
+      aiTools,
+      aiUsage: [],
+      aiNote: '',
       badges: ['✨ 신규 등록', category === 'game' ? '🎮 게임' : category === 'ai' ? '🤖 AI' : '📚 유틸'],
       actionText: '👉 지금 바로 체험하기',
       actionIcon: 'play_arrow',
@@ -53,6 +58,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
     setDev('');
     setUrl('');
     setDesc('');
+    setAiTools([]);
     onClose();
   };
 
@@ -100,6 +106,16 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
               placeholder="예: 냥이 타워 디펜스"
               className="w-full h-11 px-3.5 rounded-xl bg-white text-[#0b1c30] text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3525cd]/40 focus:border-[#3525cd] shadow-sm transition-all"
             />
+          </div>
+
+          <div>
+            <label className="text-xs text-[#0b1c30] font-bold mb-1.5 block">사용한 AI 도구 (선택)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {aiOptions.map(tool => <label key={tool} className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold cursor-pointer ${aiTools.includes(tool) ? 'bg-[#e5eeff] border-[#4f46e5] text-[#3525cd]' : 'bg-white border-slate-200 text-[#464555]'}`}>
+                <input type="checkbox" className="sr-only" checked={aiTools.includes(tool)} onChange={() => setAiTools(current => current.includes(tool) ? current.filter(item => item !== tool) : [...current, tool])} />
+                {tool}
+              </label>)}
+            </div>
           </div>
 
           <div>
