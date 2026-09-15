@@ -10,7 +10,7 @@ service cloud.firestore {
         'title', 'description', 'category', 'tech', 'badges', 'actionText', 'actionIcon',
         'actionBgColor', 'authorName', 'authorRole', 'authorInitial', 'authorInitialBg',
         'imageUrl', 'rating', 'plays', 'commentsCount', 'likes', 'url', 'simulatorType',
-        'creatorId', 'createdAt'
+        'creatorId', 'createdAt', 'hidden', 'hiddenAt', 'hiddenBy'
       ])
       && request.resource.data.creatorId == request.auth.uid
       && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
@@ -22,12 +22,17 @@ service cloud.firestore {
       && request.resource.data.likes == 0
       && request.resource.data.plays == 0
       && request.resource.data.commentsCount == 0
-      && request.resource.data.rating == 5;
+      && request.resource.data.rating == 5
+      && request.resource.data.hidden == false;
     }
     match /projects/{projectId} {
-      allow read: if true;
+      allow read: if resource.data.hidden == false || isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
       allow create: if signedIn() && validProject();
-      allow delete: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenAt', 'hiddenBy'])
+        && request.resource.data.hidden == true
+        && request.resource.data.hiddenBy == request.auth.uid);
       allow update: if isAdmin() || (
         signedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])

@@ -4,11 +4,15 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getFirestore,
   onSnapshot,
   runTransaction,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  query,
+  where,
 } from 'firebase/firestore';
 import { INITIAL_APPS } from './data/initialApps';
 import { AppProject } from './types';
@@ -52,28 +56,44 @@ const projectFields = (project: AppProject, creatorId: string) => ({
   likes: project.likes,
   url: project.url,
   simulatorType: project.simulatorType,
+  hidden: project.hidden ?? false,
   creatorId,
   createdAt: serverTimestamp(),
 });
 
 function asProject(id: string, data: Record<string, unknown>, likedIds: Set<string>): AppProject | null {
-  const candidate = { ...data, id, isLiked: likedIds.has(id) } as unknown as AppProject;
+  const candidate = { ...data, id, hidden: data.hidden === true, isLiked: likedIds.has(id) } as unknown as AppProject;
   if (!candidate.title || !candidate.authorName || !safeUrl(candidate.url) || !safeUrl(candidate.imageUrl)) return null;
   return candidate;
 }
 
 export function subscribeProjects(
+  user: User | null,
+  isAdmin: boolean,
   likedIds: Set<string>,
   onChange: (projects: AppProject[]) => void,
   onError: (error: Error) => void,
 ) {
-  return onSnapshot(collection(db, 'projects'), snapshot => {
-    const projects = snapshot.docs
-      .map(item => asProject(item.id, item.data(), likedIds))
-      .filter((item): item is AppProject => !!item)
-      .sort((a, b) => a.id.localeCompare(b.id));
+  const results = new Map<string, AppProject>();
+  const update = () => {
+    const projects = [...results.values()].sort((a, b) => a.id.localeCompare(b.id));
     onChange(projects.length ? projects : INITIAL_APPS.map(item => ({ ...item, isLiked: likedIds.has(item.id) })));
-  }, onError);
+  };
+  const queries = [query(collection(db, 'projects'), where('hidden', '==', false))];
+  if (user) queries.push(query(collection(db, 'projects'), where('creatorId', '==', user.uid)));
+  if (isAdmin) queries.push(collection(db, 'projects') as any);
+  const unsubs = queries.map(source => onSnapshot(source, snapshot => {
+    snapshot.docs.forEach(item => {
+      const project = asProject(item.id, item.data(), likedIds);
+      if (project) results.set(project.id, project);
+    });
+    update();
+  }, onError));
+  return () => unsubs.forEach(unsubscribe => unsubscribe());
+}
+
+export async function isAdminUser(user: User | null) {
+  return !!user && (await getDoc(doc(db, 'admins', user.uid))).exists();
 }
 
 export function subscribeLikes(uid: string, onChange: (ids: Set<string>) => void, onError: (error: Error) => void) {
@@ -114,6 +134,14 @@ export async function rateProject(projectId: string, user: User) {
   await setDoc(doc(db, 'users', user.uid, 'ratings', projectId), { projectId, value: 5, createdAt: serverTimestamp() });
 }
 
-export async function deleteMyProject(projectId: string, user: User) {
+export async function hideProject(projectId: string, user: User) {
+  await updateDoc(doc(db, 'projects', projectId), { hidden: true, hiddenAt: serverTimestamp(), hiddenBy: user.uid });
+}
+
+export async function restoreProject(projectId: string) {
+  await updateDoc(doc(db, 'projects', projectId), { hidden: false, hiddenAt: null, hiddenBy: null });
+}
+
+export async function permanentlyDeleteProject(projectId: string) {
   await deleteDoc(doc(db, 'projects', projectId));
 }

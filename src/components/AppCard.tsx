@@ -6,9 +6,14 @@ interface AppCardProps {
   app: AppProject;
   onOpenApp: (app: AppProject) => void;
   onToggleLike: (appId: string) => void;
+  canManage?: boolean;
+  isAdmin?: boolean;
+  onHide?: (appId: string) => void;
+  onRestore?: (appId: string) => void;
+  onPermanentDelete?: (appId: string) => void;
 }
 
-export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike }) => {
+export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, canManage, isAdmin, onHide, onRestore, onPermanentDelete }) => {
   const getActionIcon = () => {
     switch (app.actionIcon) {
       case 'restaurant':
@@ -27,10 +32,11 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike }
 
   return (
     <article
-      className="group relative flex flex-col rounded-2xl bg-white shadow-sm border border-slate-200/70 overflow-hidden transition-all duration-300 hover:shadow-md"
+      className={`group relative flex flex-col rounded-2xl bg-white shadow-sm border ${app.hidden ? 'border-amber-300 opacity-80' : 'border-slate-200/70'} overflow-hidden transition-all duration-300 hover:shadow-md`}
       data-category={app.category}
       data-app-id={app.id}
     >
+      {app.hidden && <div className="px-4 py-2 bg-amber-50 text-amber-800 text-xs font-bold">숨김 처리된 작품 {isAdmin ? '· 관리자 검토 중' : ''}</div>}
       {/* Thumbnail Area */}
       <div className="relative w-full aspect-video overflow-hidden bg-slate-100">
         <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
@@ -121,6 +127,13 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike }
             />
           </button>
         </div>
+        {canManage && <div className="flex items-center gap-2 pt-1">
+          {!app.hidden && <button type="button" onClick={() => onHide?.(app.id)} className="text-xs rounded-lg bg-amber-50 px-3 py-2 font-bold text-amber-800">갤러리에서 숨기기</button>}
+          {app.hidden && isAdmin && <>
+            <button type="button" onClick={() => onRestore?.(app.id)} className="text-xs rounded-lg bg-emerald-50 px-3 py-2 font-bold text-emerald-800">복구</button>
+            <button type="button" onClick={() => onPermanentDelete?.(app.id)} className="text-xs rounded-lg bg-red-50 px-3 py-2 font-bold text-red-800">영구 삭제</button>
+          </>}
+        </div>}
 
         {/* Author & Tech Info */}
         <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-100">

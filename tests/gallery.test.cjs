@@ -87,6 +87,10 @@ test('timer audio is released when muted and when modal closes', async () => {
   await page.context().close();
 });
 test('public Firestore gallery is readable without signing in', async () => {
-  const response = await fetch('https://firestore.googleapis.com/v1/projects/app-factory-festival/databases/(default)/documents/projects?pageSize=10');
+  const response = await fetch('https://firestore.googleapis.com/v1/projects/app-factory-festival/databases/(default)/documents:runQuery', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'projects' }], where: { fieldFilter: { field: { fieldPath: 'hidden' }, op: 'EQUAL', value: { booleanValue: false } } }, limit: 10 } }),
+  });
   assert.equal(response.status, 200);
 });

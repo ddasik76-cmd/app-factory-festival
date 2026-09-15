@@ -22,6 +22,9 @@ export interface AppProject {
   isLiked?: boolean;
   url: string;
   simulatorType: 'runner2048' | 'lunchMenu' | 'lofiTimer' | 'tarot' | 'vocabWars' | 'generic';
+  hidden?: boolean;
+  creatorId?: string;
+  hiddenAt?: unknown;
 }
 
 export type ActiveTab = 'gallery' | 'rankings' | 'register' | 'about';

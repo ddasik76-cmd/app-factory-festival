@@ -18,7 +18,7 @@ import { RankingsView } from './components/RankingsView';
 import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
 import { safeUrl } from './storage';
-import { createProject, login, logout, observeUser, rateProject, seedInitialProjects, subscribeLikes, subscribeProjects, toggleProjectLike } from './firebase';
+import { createProject, hideProject, isAdminUser, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, seedInitialProjects, subscribeLikes, subscribeProjects, toggleProjectLike } from './firebase';
 import { useModal } from './useModal';
 import { AppProject, Category, ActiveTab } from './types';
 import { INITIAL_APPS } from './data/initialApps';
@@ -29,6 +29,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('gallery');
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,20 +43,21 @@ export default function App() {
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
   useEffect(() => observeUser(nextUser => {
     setUser(nextUser);
+    void isAdminUser(nextUser).then(setIsAdmin).catch(() => setIsAdmin(false));
     if (nextUser) void seedInitialProjects(nextUser).catch(() => undefined);
   }), []);
   useEffect(() => {
     if (!user) { setLikedIds(new Set()); return; }
     return subscribeLikes(user.uid, setLikedIds, () => showToast('응원 정보를 불러오지 못했습니다.'));
   }, [user]);
-  useEffect(() => subscribeProjects(likedIds, projects => {
+  useEffect(() => subscribeProjects(user, isAdmin, likedIds, projects => {
     setApps(projects);
     setIsLoading(false);
   }, () => {
     setApps(INITIAL_APPS.map(item => ({ ...item, isLiked: likedIds.has(item.id) })));
     setIsLoading(false);
     showToast('공용 갤러리에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.');
-  }), [likedIds]);
+  }), [user, isAdmin, likedIds]);
   const currentApp = apps.find(app => app.id === selectedApp?.id) || null;
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -110,6 +112,21 @@ export default function App() {
     if (!signedInUser) return false;
     try { await rateProject(appId, signedInUser); return true; }
     catch { showToast('별점을 저장하지 못했습니다. 다시 시도해주세요.'); return false; }
+  };
+  const handleHide = async (appId: string) => {
+    if (!user || !window.confirm('이 작품을 갤러리에서 숨길까요?')) return;
+    try { await hideProject(appId, user); showToast('작품을 숨겼습니다. 관리자만 복구할 수 있습니다.'); }
+    catch { showToast('작품을 숨기지 못했습니다.'); }
+  };
+  const handleRestore = async (appId: string) => {
+    if (!isAdmin || !window.confirm('이 작품을 갤러리에 복구할까요?')) return;
+    try { await restoreProject(appId); showToast('작품을 복구했습니다.'); }
+    catch { showToast('작품을 복구하지 못했습니다.'); }
+  };
+  const handlePermanentDelete = async (appId: string) => {
+    if (!isAdmin || !window.confirm('영구 삭제하면 복구할 수 없습니다. 계속할까요?')) return;
+    try { await permanentlyDeleteProject(appId); showToast('작품을 영구 삭제했습니다.'); }
+    catch { showToast('작품을 영구 삭제하지 못했습니다.'); }
   };
 
   const handleQuickDeploy = (
@@ -211,6 +228,11 @@ export default function App() {
                     app={app}
                     onOpenApp={(selected) => setSelectedApp(selected)}
                     onToggleLike={handleToggleLike}
+                    canManage={!!user && (isAdmin || app.creatorId === user.uid)}
+                    isAdmin={isAdmin}
+                    onHide={handleHide}
+                    onRestore={handleRestore}
+                    onPermanentDelete={handlePermanentDelete}
                   />
                 ))
               )}
