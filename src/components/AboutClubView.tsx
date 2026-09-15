@@ -6,6 +6,7 @@ interface Props {
   profile: ClubProfile | null;
   schedules: ClubSchedule[];
   members: ClubMember[];
+  aiTools?: string[];
   isAdmin: boolean;
   onSaveProfile: (profile: Partial<ClubProfile>) => Promise<void>;
   onSaveSchedule: (item: Partial<ClubSchedule>) => Promise<void>;
@@ -20,7 +21,7 @@ interface Props {
 
 const fallbackProfile: ClubProfile = { id: 'main', name: '앱팩토리 (AppFactory)', tagline: '상상을 코드로, 아이디어를 웹앱으로!', festivalLabel: '🚀 2026 페스티벌', description: '중학교 친구들이 자유롭게 모여 게임, AI 도구, 학사 편의 기능을 개발하고 공유하는 웹 개발 동아리입니다.' };
 
-export const AboutClubView: React.FC<Props> = ({ profile, schedules, members, isAdmin, onSaveProfile, onSaveSchedule, onHideSchedule, onRestoreSchedule, onDeleteSchedule, onSaveMember, onHideMember, onRestoreMember, onDeleteMember }) => {
+export const AboutClubView: React.FC<Props> = ({ profile, schedules, members, aiTools = [], isAdmin, onSaveProfile, onSaveSchedule, onHideSchedule, onRestoreSchedule, onDeleteSchedule, onSaveMember, onHideMember, onRestoreMember, onDeleteMember }) => {
   const current = profile || fallbackProfile;
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState(current);
@@ -49,6 +50,6 @@ export const AboutClubView: React.FC<Props> = ({ profile, schedules, members, is
       <div className="flex flex-col gap-2">{visibleMembers.length ? visibleMembers.map(item => <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-xl ${item.status === 'hidden' ? 'bg-amber-50' : 'bg-slate-50'}`}><div className="flex items-center gap-2.5 min-w-0"><div className="w-8 h-8 rounded-full bg-[#3525cd] text-white font-bold text-xs flex items-center justify-center">{item.name.slice(-1) || '멤'}</div><div className="flex flex-col min-w-0"><span className="text-xs font-bold text-[#0b1c30] truncate">{item.name}{item.grade ? ` (${item.grade})` : ''}</span><span className="text-[11px] text-[#464555] truncate">{item.role}{item.introduction ? ` · ${item.introduction}` : ''}</span></div></div>{isAdmin && <div className="flex gap-1">{item.status === 'hidden' ? <button type="button" onClick={() => void onRestoreMember(item.id)} title="복구" className="p-1 text-emerald-700"><RotateCcw className="w-3.5 h-3.5" /></button> : <button type="button" onClick={() => void onHideMember(item.id)} title="숨김" className="p-1 text-amber-700"><EyeOff className="w-3.5 h-3.5" /></button>}<button type="button" onClick={() => setMemberDraft(item)} title="수정" className="p-1 text-[#3525cd]"><Pencil className="w-3.5 h-3.5" /></button>{item.status === 'hidden' && <button type="button" onClick={() => void onDeleteMember(item.id)} title="영구 삭제" className="p-1 text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>}</div>}</div>) : <p className="p-3 rounded-xl bg-slate-50 text-xs text-[#464555]">등록된 핵심 멤버가 없습니다.</p>}</div>
     </section>
 
-    <section className="p-4 rounded-2xl bg-[#eff4ff] border border-[#d3e4fe] flex items-start gap-2"><Sparkles className="w-5 h-5 text-[#00687a] flex-shrink-0" /><div><h3 className="text-sm font-bold text-[#0b1c30]">사용 AI 도구</h3><p className="text-xs text-[#464555] mt-1 leading-relaxed">작품 등록 때 입력한 AI 도구가 공개 작품 기준으로 자동 집계됩니다.</p></div><ShieldCheck className="w-4 h-4 text-[#3525cd] ml-auto" /></section>
+    <section className="p-4 rounded-2xl bg-[#eff4ff] border border-[#d3e4fe] flex items-start gap-2"><Sparkles className="w-5 h-5 text-[#00687a] flex-shrink-0" /><div className="min-w-0"><h3 className="text-sm font-bold text-[#0b1c30]">사용 AI 도구</h3><p className="text-xs text-[#464555] mt-1 leading-relaxed">공개 작품에서 선택된 도구를 자동으로 모았습니다.</p><div className="flex flex-wrap gap-1.5 mt-2">{aiTools.length ? aiTools.map(tool => <span key={tool} className="px-2 py-1 rounded-lg bg-white text-[#3525cd] text-[11px] font-bold border border-[#d3e4fe]">{tool}</span>) : <span className="text-[11px] text-[#464555]">아직 입력된 도구가 없습니다.</span>}</div></div><ShieldCheck className="w-4 h-4 text-[#3525cd] ml-auto flex-shrink-0" /></section>
   </div>;
 };

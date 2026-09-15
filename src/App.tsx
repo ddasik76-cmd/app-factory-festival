@@ -320,7 +320,7 @@ export default function App() {
         )}
 
         {/* Tab 4: About Club */}
-        {activeTab === 'about' && <AboutClubView profile={clubProfile} schedules={clubSchedules} members={clubMembers} isAdmin={isAdmin} onSaveProfile={profile => user ? saveClubProfile(profile, user) : Promise.reject()} onSaveSchedule={item => user ? saveClubSchedule(item, user) : Promise.reject()} onHideSchedule={id => user ? hideClubSchedule(id, user) : Promise.reject()} onRestoreSchedule={id => restoreClubSchedule(id)} onDeleteSchedule={id => deleteClubSchedule(id)} onSaveMember={item => user ? saveClubMember(item, user) : Promise.reject()} onHideMember={id => user ? hideClubMember(id, user) : Promise.reject()} onRestoreMember={id => restoreClubMember(id)} onDeleteMember={id => deleteClubMember(id)} />}
+        {activeTab === 'about' && <AboutClubView profile={clubProfile} schedules={clubSchedules} members={clubMembers} aiTools={Array.from(new Set(apps.filter(app => !app.hidden).flatMap(app => app.aiTools || [])))} isAdmin={isAdmin} onSaveProfile={profile => user ? saveClubProfile(profile, user) : Promise.reject()} onSaveSchedule={item => user ? saveClubSchedule(item, user) : Promise.reject()} onHideSchedule={id => user ? hideClubSchedule(id, user) : Promise.reject()} onRestoreSchedule={id => restoreClubSchedule(id)} onDeleteSchedule={id => deleteClubSchedule(id)} onSaveMember={item => user ? saveClubMember(item, user) : Promise.reject()} onHideMember={id => user ? hideClubMember(id, user) : Promise.reject()} onRestoreMember={id => restoreClubMember(id)} onDeleteMember={id => deleteClubMember(id)} />}
       </main>
 
       {/* Interactive WebApp Simulation Runner Modal */}
