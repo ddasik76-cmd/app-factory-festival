@@ -18,7 +18,7 @@ import { RankingsView } from './components/RankingsView';
 import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
 import { safeUrl } from './storage';
-import { createProject, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, seedInitialProjects, subscribeLikes, subscribeProjects, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
+import { createProject, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, subscribeLikes, subscribeProjects, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
 import { useModal } from './useModal';
 import { AppProject, Category, ActiveTab, ClubMember, ClubProfile, ClubSchedule, MemberRequest } from './types';
 import { INITIAL_APPS } from './data/initialApps';
@@ -51,7 +51,6 @@ export default function App() {
     setUser(nextUser);
     setMembership(null); setMemberRequest(null);
     void isAdminUser(nextUser).then(setIsAdmin).catch(() => setIsAdmin(false));
-    if (nextUser) void seedInitialProjects(nextUser).catch(() => undefined);
   }), []);
   useEffect(() => {
     if (!user) return;

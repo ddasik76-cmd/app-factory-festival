@@ -85,11 +85,12 @@ export function subscribeProjects(
   onError: (error: Error) => void,
 ) {
   const sourceResults = new Map<number, Map<string, AppProject>>();
+  let hasRemoteData = false;
   const update = () => {
     const merged = new Map<string, AppProject>();
     sourceResults.forEach(items => items.forEach((project, id) => merged.set(id, project)));
     const projects = [...merged.values()].sort((a, b) => a.id.localeCompare(b.id));
-    onChange(projects.length ? projects : INITIAL_APPS.map(item => ({ ...item, isLiked: likedIds.has(item.id) })));
+    onChange(projects.length || hasRemoteData ? projects : INITIAL_APPS.map(item => ({ ...item, isLiked: likedIds.has(item.id) })));
   };
   const queries = [query(collection(db, 'projects'), where('hidden', '==', false))];
   if (user) queries.push(query(collection(db, 'projects'), where('creatorId', '==', user.uid)));
@@ -100,6 +101,7 @@ export function subscribeProjects(
       const project = asProject(item.id, item.data(), likedIds);
       if (project) current.set(project.id, project);
     });
+    if (snapshot.docs.length > 0) hasRemoteData = true;
     sourceResults.set(index, current);
     update();
   }, onError));
