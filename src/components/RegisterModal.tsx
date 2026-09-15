@@ -6,7 +6,7 @@ import { useModal } from '../useModal';
 interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => boolean;
+  onSubmit: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => Promise<boolean>;
 }
 
 export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSubmit }) => {
@@ -19,7 +19,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
   useModal(isOpen, 'full-register-modal', onClose);
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !dev.trim()) return;
 
@@ -30,7 +30,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
       fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
     };
 
-    const saved = onSubmit({
+    const saved = await onSubmit({
       title,
       description: desc || `${dev} 친구가 개발한 동아리 프로젝트입니다.`,
       category,
@@ -83,7 +83,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
         </div>
 
         <p className="text-xs text-[#464555] leading-relaxed">
-          등록한 작품은 이 브라우저에만 저장됩니다. 브라우저 데이터를 삭제하면 사라집니다. 실제 웹앱의 HTTP(S) 주소를 입력하세요.
+          등록한 작품은 모든 방문자의 공용 갤러리에 표시됩니다. 실제 웹앱의 HTTP(S) 주소를 입력하세요.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" id="submission-form">
@@ -184,7 +184,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
             className="w-full mt-2 h-12 rounded-xl bg-[#3525cd] text-white text-sm font-bold shadow-md shadow-[#3525cd]/25 active:scale-98 transition-all hover:bg-[#281ca3] flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            <span>이 브라우저에 작품 저장</span>
+            <span>공용 갤러리에 작품 등록</span>
           </button>
         </form>
       </div>

@@ -1,12 +1,14 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import type { User } from 'firebase/auth';
 
 interface HeaderProps {
   onOpenRegister: () => void;
   onOpenProfile: () => void;
+  user: User | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, user }) => {
   return (
     <header className="fixed top-0 w-full z-40 bg-[#f8f9ff]/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe">
       <div className="h-16 px-4 flex items-center justify-between gap-2 max-w-5xl mx-auto">
@@ -48,14 +50,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile })
             onClick={onOpenProfile}
             className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-indigo-100 hover:ring-indigo-300 active:scale-95 transition-all"
             type="button"
-            title="내 프로필"
+            title={user ? '내 계정' : 'Google 로그인'}
+            aria-label={user ? '내 계정' : 'Google 로그인'}
           >
-            <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
-              alt="Profile"
+            {user?.photoURL ? <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
+              alt="내 프로필"
               className="w-8 h-8 rounded-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuA31yKR6uTmarlFLPTLbx65iZErPCHGkeWprDjJojBeZpyq72Wa58HxoIGwfsJnVDWWtmb7srQt1N-myqbkffYNPGZGwRYBKKRrv2ePF5Xt4VqHq_7jPFED3nN_XXuTbnNV1CusHEPdXcrvEeR1xhhyG3Rb0RDZTOufxkNUE_u84FPkU5TRbv1F2oMULi0hAK9_lnV7K9KqvfDUt854Wu1l_1yB7TjiFT0nvdHIHxIbTgmNeVOq1df9"
+              src={user.photoURL}
               referrerPolicy="no-referrer"
-            />
+            /> : <span className="text-[10px] font-bold text-[#3525cd]">로그인</span>}
           </button>
         </div>
       </div>

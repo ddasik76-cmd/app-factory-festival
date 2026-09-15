@@ -3,7 +3,7 @@ import { Zap, Crown } from 'lucide-react';
 import { AppProject } from '../types';
 
 interface QuickDeployBannerProps {
-  onQuickDeploy: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => boolean;
+  onQuickDeploy: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => Promise<boolean>;
 }
 
 export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDeploy }) => {
@@ -12,7 +12,7 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
   const [appTitle, setAppTitle] = useState('');
   const [appUrl, setAppUrl] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!appTitle.trim() || !devName.trim()) return;
 
@@ -24,7 +24,7 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
       fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
     };
 
-    const saved = onQuickDeploy({
+    const saved = await onQuickDeploy({
       title: appTitle,
       description: `${devName} 친구가 동아리에서 갓 완성한 멋진 신작 프로젝트!`,
       category,
@@ -64,12 +64,12 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
             </span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-white/10 text-[#acedff] text-[11px] font-bold tracking-wider">
-            이 브라우저에 저장
+            공용 갤러리
           </span>
         </div>
 
         <p className="text-xs text-[#d3e4fe]/80 mb-3 leading-relaxed">
-          제목, 개발자, URL을 입력하세요. 등록 내용은 이 브라우저에 저장되며 다른 기기와 공유되지 않습니다.
+          Google 로그인 후 제목, 개발자, URL을 입력하면 모든 방문자에게 실시간으로 표시됩니다.
         </p>
 
         <form id="quick-admin-form" onSubmit={handleSubmit} className="flex flex-col gap-2">

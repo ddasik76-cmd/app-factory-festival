@@ -25,8 +25,8 @@ interface WebAppRunnerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onShowToast: (msg: string) => void;
-  onToggleLike: (appId: string) => boolean;
-  onRate: (appId: string) => boolean;
+  onToggleLike: (appId: string) => Promise<boolean>;
+  onRate: (appId: string) => Promise<boolean>;
 }
 
 export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
@@ -239,12 +239,12 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
     } catch { onShowToast('복사하지 못했습니다. 클립보드 권한을 확인해주세요.'); }
   };
 
-  const handleStarRating = () => {
-    if (onRate(app.id)) onShowToast('별점 5.0을 이 브라우저에 저장했습니다.');
+  const handleStarRating = async () => {
+    if (await onRate(app.id)) onShowToast('별점 5.0을 저장했습니다.');
   };
 
-  const handleLocalLike = () => {
-    if (onToggleLike(app.id)) onShowToast(app.isLiked ? '응원을 취소했어요.' : '이 브라우저에 응원을 저장했어요!');
+  const handleLocalLike = async () => {
+    if (await onToggleLike(app.id)) onShowToast(app.isLiked ? '응원을 취소했어요.' : '응원을 저장했어요!');
   };
 
   return (
