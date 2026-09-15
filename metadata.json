@@ -1,0 +1,8 @@
+{
+  "name": "앱팩토리 2026 페스티벌",
+  "description": "중학교 코딩 동아리 친구들이 직접 개발한 웹앱 놀이터 및 프로젝트 갤러리",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
