@@ -7,6 +7,7 @@ import {
   getDoc,
   getFirestore,
   onSnapshot,
+  orderBy,
   runTransaction,
   serverTimestamp,
   setDoc,
@@ -15,8 +16,9 @@ import {
   where,
 } from 'firebase/firestore';
 import { INITIAL_APPS } from './data/initialApps';
-import { AppProject, ClubMember, ClubProfile, ClubSchedule, MemberRequest, MemberStatus } from './types';
+import { AppProject, ClubMember, ClubProfile, ClubSchedule, MemberRequest, MemberStatus, ProjectComment } from './types';
 import { safeUrl } from './storage';
+import { calculateRatingAggregate, normaliseComment } from './social.js';
 
 const app = initializeApp({
   apiKey: 'AIzaSyBinRsli5VeiRGicH-JRQu1hk-VwRh5b4M',
@@ -42,37 +44,52 @@ export const isSchoolAccount = (user: User | null) => {
   return !!user && user.emailVerified && email.endsWith(SCHOOL_DOMAIN);
 };
 
-const projectFields = (project: AppProject, creatorId: string) => ({
-  title: project.title.trim().slice(0, 100),
-  description: project.description.trim().slice(0, 500),
-  category: project.category,
-  tech: project.tech.slice(0, 80),
-  badges: project.badges.slice(0, 4).map(value => value.slice(0, 40)),
-  actionText: project.actionText.slice(0, 60),
-  actionIcon: project.actionIcon.slice(0, 40),
-  actionBgColor: project.actionBgColor.slice(0, 80),
-  authorName: project.authorName.trim().slice(0, 80),
-  authorRole: project.authorRole.slice(0, 80),
-  authorInitial: project.authorInitial.slice(0, 4),
-  authorInitialBg: project.authorInitialBg.slice(0, 80),
-  imageUrl: project.imageUrl,
-  rating: project.rating,
-  plays: project.plays,
-  commentsCount: project.commentsCount,
-  likes: project.likes,
-  url: project.url,
-  simulatorType: project.simulatorType,
-  hidden: project.hidden ?? false,
-  creatorId,
-  createdBy: creatorId,
-  aiTools: project.aiTools || [],
-  aiUsage: project.aiUsage || [],
-  aiNote: project.aiNote || '',
-  createdAt: serverTimestamp(),
-});
+const projectFields = (project: AppProject, creatorId: string) => {
+  const ratingCount = Math.max(0, Math.floor(Number(project.ratingCount) || 0));
+  const ratingTotal = ratingCount
+    ? Math.max(0, Number(project.ratingTotal ?? (Number(project.rating) || 0) * ratingCount) || 0)
+    : 0;
+  const rating = ratingCount ? ratingTotal / ratingCount : 0;
+  return {
+    title: project.title.trim().slice(0, 100),
+    description: project.description.trim().slice(0, 500),
+    category: project.category,
+    tech: project.tech.slice(0, 80),
+    badges: project.badges.slice(0, 4).map(value => value.slice(0, 40)),
+    actionText: project.actionText.slice(0, 60),
+    actionIcon: project.actionIcon.slice(0, 40),
+    actionBgColor: project.actionBgColor.slice(0, 80),
+    authorName: project.authorName.trim().slice(0, 80),
+    authorRole: project.authorRole.slice(0, 80),
+    authorInitial: project.authorInitial.slice(0, 4),
+    authorInitialBg: project.authorInitialBg.slice(0, 80),
+    imageUrl: project.imageUrl,
+    rating: Math.max(0, Math.min(5, rating)),
+    ratingCount,
+    ratingTotal,
+    plays: project.plays,
+    commentsCount: project.commentsCount,
+    likes: project.likes,
+    url: project.url,
+    simulatorType: project.simulatorType,
+    hidden: project.hidden ?? false,
+    creatorId,
+    createdBy: creatorId,
+    aiTools: project.aiTools || [],
+    aiUsage: project.aiUsage || [],
+    aiNote: project.aiNote || '',
+    createdAt: serverTimestamp(),
+  };
+};
 
 function asProject(id: string, data: Record<string, unknown>, likedIds: Set<string>): AppProject | null {
-  const candidate = { ...data, id, hidden: data.hidden === true, isLiked: likedIds.has(id) } as unknown as AppProject;
+  const hasRatingCount = Number.isInteger(data.ratingCount) && Number(data.ratingCount) >= 0;
+  const rawRatingTotal = data.ratingTotal;
+  const hasRatingTotal = typeof rawRatingTotal === 'number' && Number.isFinite(rawRatingTotal);
+  const ratingCount = hasRatingCount && hasRatingTotal ? Number(data.ratingCount) : 0;
+  const ratingTotal = ratingCount && hasRatingTotal ? Math.max(0, rawRatingTotal) : 0;
+  const rating = ratingCount ? Math.max(0, Math.min(5, ratingTotal / ratingCount)) : 0;
+  const candidate = { ...data, id, rating, ratingCount, ratingTotal, hidden: data.hidden === true, isLiked: likedIds.has(id) } as unknown as AppProject;
   if (!candidate.title || !candidate.authorName || !safeUrl(candidate.url) || !safeUrl(candidate.imageUrl)) return null;
   return candidate;
 }
@@ -208,6 +225,28 @@ export function subscribeLikes(uid: string, onChange: (ids: Set<string>) => void
   }, onError);
 }
 
+export function subscribeRatings(uid: string, onChange: (ratings: Map<string, number>) => void, onError: (error: Error) => void) {
+  return onSnapshot(collection(db, 'users', uid, 'ratings'), snapshot => {
+    const ratings = new Map<string, number>();
+    snapshot.docs.forEach(item => {
+      const value = Number(item.data().value);
+      if (Number.isInteger(value) && value >= 1 && value <= 5) ratings.set(item.id, value);
+    });
+    onChange(ratings);
+  }, onError);
+}
+
+export function subscribeProjectComments(
+  projectId: string,
+  onChange: (comments: ProjectComment[]) => void,
+  onError: (error: Error) => void,
+) {
+  const source = query(collection(db, 'projects', projectId, 'comments'), orderBy('createdAt', 'desc'));
+  return onSnapshot(source, snapshot => {
+    onChange(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as ProjectComment)));
+  }, onError);
+}
+
 export async function seedInitialProjects(user: User) {
   await Promise.all(INITIAL_APPS.map(async project => {
     try {
@@ -215,7 +254,7 @@ export async function seedInitialProjects(user: User) {
         const ref = doc(db, 'projects', project.id);
         const existing = await transaction.get(ref);
         if (!existing.exists()) {
-          transaction.set(ref, projectFields({ ...project, rating: 5, plays: 0, commentsCount: 0, likes: 0 }, user.uid));
+          transaction.set(ref, projectFields({ ...project, plays: 0, commentsCount: 0, likes: 0 }, user.uid));
         }
       });
     }
@@ -244,8 +283,65 @@ export async function toggleProjectLike(projectId: string, user: User) {
   });
 }
 
-export async function rateProject(projectId: string, user: User) {
-  await setDoc(doc(db, 'users', user.uid, 'ratings', projectId), { projectId, value: 5, createdAt: serverTimestamp() });
+export async function rateProject(projectId: string, value: number, user: User) {
+  if (!Number.isInteger(value) || value < 1 || value > 5) throw new Error('invalid-rating');
+  const projectRef = doc(db, 'projects', projectId);
+  const ratingRef = doc(db, 'users', user.uid, 'ratings', projectId);
+  await runTransaction(db, async transaction => {
+    const [projectSnapshot, ratingSnapshot] = await Promise.all([transaction.get(projectRef), transaction.get(ratingRef)]);
+    if (!projectSnapshot.exists()) throw new Error('project-not-found');
+    const project = projectSnapshot.data();
+    const hasAggregate = Number.isInteger(project.ratingCount) && Number(project.ratingCount) >= 0
+      && typeof project.ratingTotal === 'number' && Number.isFinite(project.ratingTotal);
+    const count = hasAggregate ? Number(project.ratingCount) : 0;
+    const total = hasAggregate ? Math.max(0, Number(project.ratingTotal)) : 0;
+    const previous = ratingSnapshot.exists() ? Number(ratingSnapshot.data().value) : null;
+    const next = calculateRatingAggregate({ ratingCount: count, ratingTotal: total }, previous, value);
+    transaction.set(ratingRef, {
+      projectId,
+      value,
+      createdAt: ratingSnapshot.exists() ? ratingSnapshot.data().createdAt : serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    transaction.update(projectRef, { rating: next.rating, ratingCount: next.ratingCount, ratingTotal: next.ratingTotal });
+  });
+}
+
+export async function saveProjectComment(projectId: string, body: string, user: User) {
+  const text = normaliseComment(body);
+  if (!text) throw new Error('empty-comment');
+  const projectRef = doc(db, 'projects', projectId);
+  const commentRef = doc(db, 'projects', projectId, 'comments', user.uid);
+  await runTransaction(db, async transaction => {
+    const [projectSnapshot, commentSnapshot] = await Promise.all([transaction.get(projectRef), transaction.get(commentRef)]);
+    if (!projectSnapshot.exists() || projectSnapshot.data().hidden === true) throw new Error('project-not-found');
+    if (commentSnapshot.exists()) {
+      transaction.update(commentRef, { body: text, updatedAt: serverTimestamp() });
+      return;
+    }
+    const commentsCount = Math.max(0, Number(projectSnapshot.data().commentsCount) || 0);
+    transaction.set(commentRef, {
+      authorId: user.uid,
+      authorName: (user.displayName || user.email || '앱팩토리 사용자').trim().slice(0, 80),
+      authorPhotoUrl: (user.photoURL || '').slice(0, 2000),
+      body: text,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    transaction.update(projectRef, { commentsCount: commentsCount + 1 });
+  });
+}
+
+export async function deleteProjectComment(projectId: string, commentId: string) {
+  const projectRef = doc(db, 'projects', projectId);
+  const commentRef = doc(db, 'projects', projectId, 'comments', commentId);
+  await runTransaction(db, async transaction => {
+    const [projectSnapshot, commentSnapshot] = await Promise.all([transaction.get(projectRef), transaction.get(commentRef)]);
+    if (!projectSnapshot.exists() || !commentSnapshot.exists()) throw new Error('comment-not-found');
+    const commentsCount = Math.max(0, Number(projectSnapshot.data().commentsCount) || 0);
+    transaction.delete(commentRef);
+    transaction.update(projectRef, { commentsCount: Math.max(0, commentsCount - 1) });
+  });
 }
 
 export async function hideProject(projectId: string, user: User) {

@@ -18,9 +18,9 @@ import { RankingsView } from './components/RankingsView';
 import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
 import { safeUrl } from './storage';
-import { createProject, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, subscribeLikes, subscribeProjects, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
+import { createProject, deleteProjectComment, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, saveProjectComment, subscribeLikes, subscribeProjectComments, subscribeProjects, subscribeRatings, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
 import { useModal } from './useModal';
-import { AppProject, Category, ActiveTab, ClubMember, ClubProfile, ClubSchedule, MemberRequest } from './types';
+import { AppProject, Category, ActiveTab, ClubMember, ClubProfile, ClubSchedule, MemberRequest, ProjectComment } from './types';
 import { INITIAL_APPS } from './data/initialApps';
 import { X, LogOut } from 'lucide-react';
 
@@ -28,6 +28,9 @@ export default function App() {
   const [apps, setApps] = useState<AppProject[]>([]);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [ratings, setRatings] = useState<Map<string, number>>(new Map());
+  const [comments, setComments] = useState<ProjectComment[]>([]);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [membership, setMembership] = useState<ClubMember | null>(null);
@@ -73,6 +76,10 @@ export default function App() {
     if (!user) { setLikedIds(new Set()); return; }
     return subscribeLikes(user.uid, setLikedIds, () => showToast('응원 정보를 불러오지 못했습니다.'));
   }, [user]);
+  useEffect(() => {
+    if (!user) { setRatings(new Map()); return; }
+    return subscribeRatings(user.uid, setRatings, () => showToast('내 별점을 불러오지 못했습니다.'));
+  }, [user]);
   useEffect(() => subscribeProjects(user, isAdmin, likedIds, projects => {
     setApps(projects);
     setIsLoading(false);
@@ -82,6 +89,19 @@ export default function App() {
     showToast('공용 갤러리에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.');
   }), [user, isAdmin, likedIds]);
   const currentApp = apps.find(app => app.id === selectedApp?.id) || null;
+  useEffect(() => {
+    const projectId = selectedApp?.id;
+    if (!projectId) { setComments([]); setIsCommentsLoading(false); return; }
+    setIsCommentsLoading(true);
+    return subscribeProjectComments(projectId, nextComments => {
+      setComments(nextComments);
+      setIsCommentsLoading(false);
+    }, () => {
+      setComments([]);
+      setIsCommentsLoading(false);
+      showToast('댓글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    });
+  }, [selectedApp?.id]);
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToastMessage(msg);
@@ -134,11 +154,31 @@ export default function App() {
     try { await toggleProjectLike(appId, signedInUser); return true; }
     catch { showToast('응원을 저장하지 못했습니다. 다시 시도해주세요.'); return false; }
   };
-  const handleRate = async (appId: string) => {
+  const handleRate = async (appId: string, value: number) => {
     const signedInUser = await requireLogin();
     if (!signedInUser) return false;
-    try { await rateProject(appId, signedInUser); return true; }
+    try { await rateProject(appId, value, signedInUser); return true; }
     catch { showToast('별점을 저장하지 못했습니다. 다시 시도해주세요.'); return false; }
+  };
+  const handleSaveComment = async (appId: string, body: string) => {
+    const signedInUser = await requireLogin();
+    if (!signedInUser) return false;
+    try {
+      await saveProjectComment(appId, body, signedInUser);
+      showToast('댓글을 저장했습니다.');
+      return true;
+    } catch (error: any) {
+      showToast(error?.message === 'empty-comment' ? '댓글 내용을 입력해주세요.' : '댓글을 저장하지 못했습니다. 다시 시도해주세요.');
+      return false;
+    }
+  };
+  const handleDeleteComment = async (appId: string, commentId: string) => {
+    if (!user || commentId !== user.uid) { showToast('내 댓글만 삭제할 수 있습니다.'); return false; }
+    try {
+      await deleteProjectComment(appId, commentId);
+      showToast('댓글을 삭제했습니다.');
+      return true;
+    } catch { showToast('댓글을 삭제하지 못했습니다. 다시 시도해주세요.'); return false; }
   };
   const handleHide = async (appId: string) => {
     if (!user || !window.confirm('이 작품을 갤러리에서 숨길까요?')) return;
@@ -166,7 +206,9 @@ export default function App() {
     const fullApp: AppProject = {
       ...newApp, url, title: newApp.title.trim(), authorName: newApp.authorName.trim(), simulatorType: 'generic',
       id: `app-${crypto.randomUUID()}`,
-      rating: 5.0,
+      rating: 0,
+      ratingCount: 0,
+      ratingTotal: 0,
       plays: 0,
       commentsCount: 0,
       likes: 0,
@@ -331,6 +373,12 @@ export default function App() {
         onShowToast={showToast}
         onToggleLike={handleToggleLike}
         onRate={handleRate}
+        userRating={currentApp ? ratings.get(currentApp.id) : undefined}
+        comments={comments}
+        isCommentsLoading={isCommentsLoading}
+        currentUserId={user?.uid}
+        onSaveComment={body => currentApp ? handleSaveComment(currentApp.id, body) : Promise.resolve(false)}
+        onDeleteComment={commentId => currentApp ? handleDeleteComment(currentApp.id, commentId) : Promise.resolve(false)}
       />
 
       {/* Registration Modal Drawer */}

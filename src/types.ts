@@ -16,6 +16,8 @@ export interface AppProject {
   authorInitialBg: string;
   imageUrl: string;
   rating: number;
+  ratingCount?: number;
+  ratingTotal?: number;
   plays: number;
   commentsCount: number;
   likes: number;
@@ -30,6 +32,16 @@ export interface AppProject {
   aiTools?: string[];
   aiUsage?: string[];
   aiNote?: string;
+}
+
+export interface ProjectComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoUrl?: string;
+  body: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
 export type MemberStatus = 'pending' | 'approved' | 'rejected' | 'blocked';
