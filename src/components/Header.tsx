@@ -15,15 +15,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, u
       <div className="h-16 px-4 flex items-center justify-between gap-2 max-w-5xl mx-auto">
         <div className="flex items-center gap-3">
           <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
-            alt="AppFactory Logo"
-            className="h-8 w-auto object-contain rounded-md"
-            src="https://lh3.googleusercontent.com/aida/AEtjO1WxDuBc_0fUECPJ9q4XKz_DMnVsmQqXoh1VbZS6PfL6baIpXQGcP4Zqdp00NjZoZlHCegD5FEcPiK_-wycyH9qfKVW9cJQcqmgdW7izSdK3D4k1Dh9ExlLzk1oBVUqhJK2o86ZVq9sqX8ltd-Y5P3Z1U73iDcD_0N8YMBame0Uqt2A4XP7fYIGKLYNO6qQ7t-pWPCaCg4_N2P4epFvkcKpVLYAL5ScRzh6Y9pr3EZva2QI_GTv7PR0HWQ"
+            alt="팔봉중학교 로고"
+            className="h-9 w-9 object-contain rounded-full bg-white p-0.5 ring-1 ring-[#d3e4fe]"
+            src={`${import.meta.env.BASE_URL}school-logo.jpg`}
             referrerPolicy="no-referrer"
           />
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-[17px] font-extrabold tracking-tight text-[#3525cd]">
-                앱팩토리
+                팔봉중 앱팩토리
               </span>
               <span className="px-2 py-0.5 rounded-full bg-[#57dffe] text-[#006172] text-[11px] font-bold">
                 🚀 2026 페스티벌

@@ -29,7 +29,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3525cd] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3525cd]"></span>
           </span>
-          <span>2026 앱팩토리 신작 대공개</span>
+          <span>2026 팔봉중 앱팩토리 신작 대공개</span>
         </div>
 
         {/* Headline */}
@@ -42,7 +42,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </h1>
 
         <p className="text-sm text-[#464555] leading-relaxed">
-          앱팩토리 중학교 코딩 동아리 친구들이 직접 개발한 프로젝트를 바로 플레이해보세요!
+          팔봉중 앱팩토리 코딩 동아리 친구들이 직접 개발한 프로젝트를 바로 플레이해보세요!
         </p>
 
         {/* Fast Action Row */}
