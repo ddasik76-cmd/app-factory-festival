@@ -19,7 +19,7 @@ import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
 import { safeUrl } from './storage';
 import { markPlayRecorded, shouldRecordPlay } from './social.js';
-import { createProject, deleteProjectComment, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, recordProjectPlay, restoreProject, saveProjectComment, subscribeLikes, subscribeProjectComments, subscribeProjects, subscribeRatings, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
+import { createProject, deleteProjectComment, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, recordProjectPlay, restoreProject, saveProjectComment, subscribeLikes, subscribeProjectComments, subscribeProjects, subscribeRatings, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember, updateProject } from './firebase';
 import { useModal } from './useModal';
 import { AppProject, Category, ActiveTab, ClubMember, ClubProfile, ClubSchedule, MemberRequest, ProjectComment } from './types';
 import { INITIAL_APPS } from './data/initialApps';
@@ -44,6 +44,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApp, setSelectedApp] = useState<AppProject | null>(null);
+  const [editingApp, setEditingApp] = useState<AppProject | null>(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -147,6 +148,7 @@ export default function App() {
     if (!signedInUser) return;
     if (!isSchoolAccount(signedInUser)) { showToast('학교 계정(@g.cnees.kr)으로 로그인해주세요.'); return; }
     if (!isAdmin && membership?.status !== 'active') { showToast(memberRequest?.status === 'pending' ? '관리자 승인 후 작품을 등록할 수 있습니다.' : '동아리 멤버 승인 후 작품을 등록할 수 있습니다.'); return; }
+    setEditingApp(null);
     setIsRegisterModalOpen(true);
   };
   const handleToggleLike = async (appId: string) => {
@@ -195,6 +197,49 @@ export default function App() {
     if (!isAdmin || !window.confirm('영구 삭제하면 복구할 수 없습니다. 계속할까요?')) return;
     try { await permanentlyDeleteProject(appId); showToast('작품을 영구 삭제했습니다.'); }
     catch (error: any) { showToast(error?.code === 'permission-denied' ? '관리자 권한이 필요합니다.' : '작품을 영구 삭제하지 못했습니다.'); }
+  };
+
+  const handleEditProject = (app: AppProject) => {
+    if (!user || (!isAdmin && app.creatorId !== user.uid)) {
+      showToast('관리자 또는 작품 등록자 본인만 수정할 수 있습니다.');
+      return;
+    }
+    setEditingApp(app);
+    setIsRegisterModalOpen(true);
+  };
+
+  const handleUpdateProject = async (
+    appId: string,
+    updatedApp: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>,
+  ) => {
+    if (!user) { showToast('작품을 수정하려면 Google 로그인이 필요합니다.'); return false; }
+    const current = apps.find(app => app.id === appId);
+    if (!current || (!isAdmin && current.creatorId !== user.uid)) {
+      showToast('관리자 또는 작품 등록자 본인만 수정할 수 있습니다.');
+      return false;
+    }
+    const url = safeUrl(updatedApp.url);
+    if (!url || !updatedApp.title.trim() || !updatedApp.authorName.trim()) {
+      showToast('제목, 개발자와 올바른 HTTP(S) 주소를 입력해주세요.');
+      return false;
+    }
+    try {
+      await updateProject(appId, {
+        ...current,
+        ...updatedApp,
+        title: updatedApp.title.trim(),
+        authorName: updatedApp.authorName.trim(),
+        authorInitial: updatedApp.authorName.trim().slice(-1) || current.authorInitial,
+        url,
+      }, user);
+      setEditingApp(null);
+      setIsRegisterModalOpen(false);
+      showToast('작품 정보를 수정했습니다.');
+      return true;
+    } catch (error: any) {
+      showToast(error?.code === 'permission-denied' ? '관리자 또는 작품 등록자 본인만 수정할 수 있습니다.' : '작품 정보를 수정하지 못했습니다. 입력값을 확인해주세요.');
+      return false;
+    }
   };
 
   const handleQuickDeploy = (
@@ -318,7 +363,9 @@ export default function App() {
                     onOpenApp={openProject}
                     onToggleLike={handleToggleLike}
                     canManage={!!user && (isAdmin || app.creatorId === user.uid)}
+                    canEdit={!!user && (isAdmin || app.creatorId === user.uid)}
                     isAdmin={isAdmin}
+                    onEdit={handleEditProject}
                     onHide={handleHide}
                     onRestore={handleRestore}
                     onPermanentDelete={handlePermanentDelete}
@@ -397,8 +444,9 @@ export default function App() {
       {/* Registration Modal Drawer */}
       <RegisterModal
         isOpen={isRegisterModalOpen}
-        onClose={() => setIsRegisterModalOpen(false)}
-        onSubmit={handleQuickDeploy}
+        initialApp={editingApp}
+        onClose={() => { setIsRegisterModalOpen(false); setEditingApp(null); }}
+        onSubmit={draft => editingApp ? handleUpdateProject(editingApp.id, draft) : handleQuickDeploy(draft)}
       />
 
       {/* Profile Modal */}

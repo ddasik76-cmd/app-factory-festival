@@ -268,6 +268,30 @@ export async function createProject(project: AppProject, user: User) {
   await setDoc(doc(db, 'projects', project.id), projectFields(project, user.uid));
 }
 
+export async function updateProject(projectId: string, project: AppProject, user: User) {
+  const title = project.title.trim().slice(0, 100);
+  const description = project.description.trim().slice(0, 500);
+  const authorName = project.authorName.trim().slice(0, 80);
+  const url = project.url.trim();
+  if (!title || !authorName || !safeUrl(url) || !['game', 'ai', 'study', 'fun'].includes(project.category)) {
+    throw new Error('invalid-project');
+  }
+
+  await updateDoc(doc(db, 'projects', projectId), {
+    title,
+    description,
+    category: project.category,
+    tech: project.tech.slice(0, 80),
+    badges: project.badges.slice(0, 4).map(value => value.slice(0, 40)),
+    authorName,
+    authorInitial: project.authorInitial.slice(0, 4),
+    url,
+    aiTools: (project.aiTools || []).slice(0, 8).map(value => value.slice(0, 40)),
+    updatedAt: serverTimestamp(),
+    updatedBy: user.uid,
+  });
+}
+
 export async function toggleProjectLike(projectId: string, user: User) {
   const projectRef = doc(db, 'projects', projectId);
   const likeRef = doc(db, 'users', user.uid, 'likes', projectId);
