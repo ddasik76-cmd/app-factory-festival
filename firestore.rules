@@ -21,7 +21,7 @@ service cloud.firestore {
         'title', 'description', 'category', 'tech', 'badges', 'actionText', 'actionIcon',
         'actionBgColor', 'authorName', 'authorRole', 'authorInitial', 'authorInitialBg',
         'imageUrl', 'rating', 'ratingCount', 'ratingTotal', 'plays', 'commentsCount', 'likes', 'url', 'simulatorType',
-        'creatorId', 'createdBy', 'createdAt', 'hidden', 'hiddenAt', 'hiddenBy', 'aiTools', 'aiUsage', 'aiNote'
+        'creatorId', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy', 'hidden', 'hiddenAt', 'hiddenBy', 'aiTools', 'aiUsage', 'aiNote'
       ])
       && request.resource.data.createdBy == request.auth.uid
       && (isAdmin() || (isApprovedMember() && request.resource.data.creatorId == request.auth.uid))
@@ -76,12 +76,28 @@ service cloud.firestore {
       allow read: if resource.data.hidden == false || isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid);
       allow create: if validProject();
       allow delete: if isAdmin();
-      allow update: if isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenAt', 'hiddenBy'])
-        && request.resource.data.hidden == true
-        && request.resource.data.hiddenBy == request.auth.uid);
-      allow update: if isAdmin() || (
-        signedIn()
+      allow update: if (isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenAt', 'hiddenBy']))
+        || (signedIn() && resource.data.creatorId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenAt', 'hiddenBy'])
+          && request.resource.data.hidden == true
+          && request.resource.data.hiddenBy == request.auth.uid);
+      allow update: if (isAdmin() || (signedIn() && resource.data.creatorId == request.auth.uid))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'description', 'category', 'tech', 'badges', 'authorName', 'authorInitial', 'url', 'aiTools', 'updatedAt', 'updatedBy'
+        ])
+        && request.resource.data.creatorId == resource.data.creatorId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
+        && request.resource.data.description is string && request.resource.data.description.size() <= 500
+        && request.resource.data.authorName is string && request.resource.data.authorName.size() > 0 && request.resource.data.authorName.size() <= 80
+        && request.resource.data.category in ['game', 'ai', 'study', 'fun']
+        && request.resource.data.url is string && request.resource.data.url.matches('https?://[^\\s]+')
+        && request.resource.data.get('aiTools', []) is list;
+      allow update: if signedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
         && (
           (request.resource.data.likes == resource.data.likes + 1
@@ -92,8 +108,7 @@ service cloud.firestore {
             && request.resource.data.likes >= 0
             && exists(/databases/$(database)/documents/users/$(request.auth.uid)/likes/$(projectId))
             && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/likes/$(projectId)))
-        )
-      );
+        );
       allow update: if resource.data.hidden == false
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays'])
         && resource.data.get('plays', 0) is int
