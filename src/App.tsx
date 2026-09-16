@@ -18,7 +18,8 @@ import { RankingsView } from './components/RankingsView';
 import { AboutClubView } from './components/AboutClubView';
 import { Toast } from './components/Toast';
 import { safeUrl } from './storage';
-import { createProject, deleteProjectComment, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, restoreProject, saveProjectComment, subscribeLikes, subscribeProjectComments, subscribeProjects, subscribeRatings, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
+import { markPlayRecorded, shouldRecordPlay } from './social.js';
+import { createProject, deleteProjectComment, hideProject, isAdminUser, isSchoolAccount, login, logout, observeUser, permanentlyDeleteProject, rateProject, recordProjectPlay, restoreProject, saveProjectComment, subscribeLikes, subscribeProjectComments, subscribeProjects, subscribeRatings, toggleProjectLike, subscribeMembership, subscribeMemberRequest, subscribeMemberRequests, submitMemberRequest, reviewMemberRequest, subscribeClubProfile, subscribeClubSchedules, subscribeClubMembers, saveClubProfile, saveClubSchedule, hideClubSchedule, restoreClubSchedule, deleteClubSchedule, saveClubMember, hideClubMember, restoreClubMember, deleteClubMember } from './firebase';
 import { useModal } from './useModal';
 import { AppProject, Category, ActiveTab, ClubMember, ClubProfile, ClubSchedule, MemberRequest, ProjectComment } from './types';
 import { INITIAL_APPS } from './data/initialApps';
@@ -234,7 +235,17 @@ export default function App() {
   const handleRandomPlay = () => {
     if (filteredApps.length === 0) { showToast('조건에 맞는 작품이 없습니다.'); return; }
     const randomIndex = Math.floor(Math.random() * filteredApps.length);
-    setSelectedApp(filteredApps[randomIndex]);
+    openProject(filteredApps[randomIndex]);
+  };
+
+  const recordPlay = (appId: string) => {
+    if (!shouldRecordPlay(appId)) return;
+    void recordProjectPlay(appId).then(() => markPlayRecorded(appId)).catch(() => undefined);
+  };
+
+  const openProject = (app: AppProject) => {
+    if (app.simulatorType !== 'generic') recordPlay(app.id);
+    setSelectedApp(app);
   };
 
   return (
@@ -304,7 +315,7 @@ export default function App() {
                   <AppCard
                     key={app.id}
                     app={app}
-                    onOpenApp={(selected) => setSelectedApp(selected)}
+                    onOpenApp={openProject}
                     onToggleLike={handleToggleLike}
                     canManage={!!user && (isAdmin || app.creatorId === user.uid)}
                     isAdmin={isAdmin}
@@ -317,10 +328,11 @@ export default function App() {
             </section>
 
             {/* Community Hall of Fame Mini Section */}
-            {apps.some((a) => a.id === 'app-5' && !a.hidden) && <HallOfFame
+            {apps.some((a) => a.id === 'app-5' && !a.hidden && a.plays >= 300) && <HallOfFame
+              plays={apps.find((a) => a.id === 'app-5')?.plays}
               onSelectVocabWars={() => {
                 const vocabApp = apps.find((a) => a.id === 'app-5' && !a.hidden);
-                if (vocabApp) setSelectedApp(vocabApp);
+                if (vocabApp) openProject(vocabApp);
               }}
             />}
           </div>
@@ -330,7 +342,7 @@ export default function App() {
         {activeTab === 'rankings' && (
           <RankingsView
             apps={apps}
-            onOpenApp={(app) => setSelectedApp(app)}
+            onOpenApp={openProject}
             onToggleLike={handleToggleLike}
           />
         )}
@@ -373,6 +385,7 @@ export default function App() {
         onShowToast={showToast}
         onToggleLike={handleToggleLike}
         onRate={handleRate}
+        onRecordPlay={recordPlay}
         userRating={currentApp ? ratings.get(currentApp.id) : undefined}
         comments={comments}
         isCommentsLoading={isCommentsLoading}

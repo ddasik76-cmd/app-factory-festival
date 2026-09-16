@@ -19,3 +19,20 @@ export function calculateRatingAggregate(current, previousValue, nextValue) {
 export function normaliseComment(body) {
   return body.trim().slice(0, 500);
 }
+
+const PLAY_COOLDOWN_MS = 30 * 60 * 1000;
+
+export function shouldRecordPlay(projectId, now = Date.now(), storage = globalThis.localStorage) {
+  try {
+    const stored = storage.getItem(`appfactory:play:${projectId}`);
+    if (stored === null) return true;
+    const previous = Number(stored);
+    return !Number.isFinite(previous) || now - previous >= PLAY_COOLDOWN_MS;
+  } catch {
+    return true;
+  }
+}
+
+export function markPlayRecorded(projectId, now = Date.now(), storage = globalThis.localStorage) {
+  try { storage.setItem(`appfactory:play:${projectId}`, String(now)); } catch { /* optional storage */ }
+}

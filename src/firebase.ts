@@ -67,7 +67,7 @@ const projectFields = (project: AppProject, creatorId: string) => {
     rating: Math.max(0, Math.min(5, rating)),
     ratingCount,
     ratingTotal,
-    plays: project.plays,
+    plays: Math.max(0, Math.floor(Number(project.plays) || 0)),
     commentsCount: project.commentsCount,
     likes: project.likes,
     url: project.url,
@@ -89,7 +89,9 @@ function asProject(id: string, data: Record<string, unknown>, likedIds: Set<stri
   const ratingCount = hasRatingCount && hasRatingTotal ? Number(data.ratingCount) : 0;
   const ratingTotal = ratingCount && hasRatingTotal ? Math.max(0, rawRatingTotal) : 0;
   const rating = ratingCount ? Math.max(0, Math.min(5, ratingTotal / ratingCount)) : 0;
-  const candidate = { ...data, id, rating, ratingCount, ratingTotal, hidden: data.hidden === true, isLiked: likedIds.has(id) } as unknown as AppProject;
+  const rawPlays = Number(data.plays);
+  const plays = Number.isInteger(rawPlays) && rawPlays >= 0 ? rawPlays : 0;
+  const candidate = { ...data, id, plays, rating, ratingCount, ratingTotal, hidden: data.hidden === true, isLiked: likedIds.has(id) } as unknown as AppProject;
   if (!candidate.title || !candidate.authorName || !safeUrl(candidate.url) || !safeUrl(candidate.imageUrl)) return null;
   return candidate;
 }
@@ -280,6 +282,16 @@ export async function toggleProjectLike(projectId: string, user: User) {
       transaction.set(likeRef, { projectId, createdAt: serverTimestamp() });
       transaction.update(projectRef, { likes: currentLikes + 1 });
     }
+  });
+}
+
+export async function recordProjectPlay(projectId: string) {
+  const projectRef = doc(db, 'projects', projectId);
+  await runTransaction(db, async transaction => {
+    const projectSnapshot = await transaction.get(projectRef);
+    if (!projectSnapshot.exists() || projectSnapshot.data().hidden === true) throw new Error('project-not-found');
+    const plays = Math.max(0, Math.floor(Number(projectSnapshot.data().plays) || 0));
+    transaction.update(projectRef, { plays: plays + 1 });
   });
 }
 
