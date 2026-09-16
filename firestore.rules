@@ -32,7 +32,7 @@ service cloud.firestore {
       && request.resource.data.url is string && request.resource.data.url.matches('https?://[^\\s]+')
       && request.resource.data.imageUrl is string && request.resource.data.imageUrl.matches('https?://[^\\s]+')
       && request.resource.data.likes == 0
-      && request.resource.data.plays == 0
+      && request.resource.data.plays is int && request.resource.data.plays == 0
       && request.resource.data.commentsCount == 0
       && request.resource.data.ratingCount is int && request.resource.data.ratingCount == 0
       && request.resource.data.ratingTotal is number && request.resource.data.ratingTotal == 0
@@ -94,6 +94,11 @@ service cloud.firestore {
             && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/likes/$(projectId)))
         )
       );
+      allow update: if resource.data.hidden == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays'])
+        && resource.data.get('plays', 0) is int
+        && request.resource.data.plays is int
+        && request.resource.data.plays == resource.data.get('plays', 0) + 1;
       allow update: if validRatingSummaryChange(projectId);
       allow update: if validOwnCommentCountCreate(projectId) || validOwnCommentCountDelete(projectId);
 
