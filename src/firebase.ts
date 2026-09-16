@@ -181,7 +181,7 @@ export async function reviewMemberRequest(request: MemberRequest, status: Member
 }
 
 const defaultClubProfile: ClubProfile = {
-  id: 'main', name: '앱팩토리 (AppFactory)', tagline: '상상을 코드로, 아이디어를 웹앱으로!',
+  id: 'main', name: '팔봉중 앱팩토리', tagline: '상상을 코드로, 아이디어를 웹앱으로!',
   description: '중학교 친구들이 자유롭게 모여 게임, AI 도구, 학사 편의 기능을 개발하고 공유하는 웹 개발 동아리입니다.',
   festivalLabel: '🚀 2026 페스티벌',
 };
