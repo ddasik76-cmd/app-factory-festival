@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, MessageSquare, Heart, Play, Utensils, Sparkles, Swords, BookOpen } from 'lucide-react';
+import { Star, MessageSquare, Heart, Play, Utensils, Sparkles, Swords, BookOpen, Pencil } from 'lucide-react';
 import { AppProject } from '../types';
 
 interface AppCardProps {
@@ -7,13 +7,15 @@ interface AppCardProps {
   onOpenApp: (app: AppProject) => void;
   onToggleLike: (appId: string) => void;
   canManage?: boolean;
+  canEdit?: boolean;
   isAdmin?: boolean;
+  onEdit?: (app: AppProject) => void;
   onHide?: (appId: string) => void;
   onRestore?: (appId: string) => void;
   onPermanentDelete?: (appId: string) => void;
 }
 
-export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, canManage, isAdmin, onHide, onRestore, onPermanentDelete }) => {
+export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, canManage, canEdit, isAdmin, onEdit, onHide, onRestore, onPermanentDelete }) => {
   const ratingLabel = app.ratingCount ? app.rating.toFixed(1) : '신규';
   const getActionIcon = () => {
     switch (app.actionIcon) {
@@ -129,6 +131,7 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
           </button>
         </div>
         {canManage && <div className="flex items-center gap-2 pt-1">
+          {canEdit && <button type="button" onClick={() => onEdit?.(app)} className="text-xs rounded-lg bg-[#e5eeff] px-3 py-2 font-bold text-[#3525cd] flex items-center gap-1"><Pencil className="w-3 h-3" /> 작품 수정</button>}
           {!app.hidden && <button type="button" onClick={() => onHide?.(app.id)} className="text-xs rounded-lg bg-amber-50 px-3 py-2 font-bold text-amber-800">갤러리에서 숨기기</button>}
           {app.hidden && isAdmin && <>
             <button type="button" onClick={() => onRestore?.(app.id)} className="text-xs rounded-lg bg-emerald-50 px-3 py-2 font-bold text-emerald-800">복구</button>

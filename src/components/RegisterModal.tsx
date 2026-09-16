@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Send } from 'lucide-react';
 import { AppProject } from '../types';
 import { useModal } from '../useModal';
@@ -6,10 +6,12 @@ import { useModal } from '../useModal';
 interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialApp?: AppProject | null;
   onSubmit: (app: Omit<AppProject, 'id' | 'rating' | 'plays' | 'commentsCount' | 'likes'>) => Promise<boolean>;
 }
 
-export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSubmit }) => {
+export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, initialApp, onSubmit }) => {
+  const isEditing = !!initialApp;
   const [title, setTitle] = useState('');
   const [dev, setDev] = useState('');
   const [category, setCategory] = useState<'game' | 'ai' | 'study' | 'fun'>('game');
@@ -17,6 +19,16 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
   const [desc, setDesc] = useState('');
   const [aiTools, setAiTools] = useState<string[]>([]);
   const aiOptions = ['ChatGPT', 'Claude', 'Gemini', 'Cursor', 'GitHub Copilot', 'Replit', 'v0'];
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setTitle(initialApp?.title || '');
+    setDev(initialApp?.authorName || '');
+    setCategory(initialApp?.category || 'game');
+    setUrl(initialApp?.url || '');
+    setDesc(initialApp?.description || '');
+    setAiTools(initialApp?.aiTools || []);
+  }, [isOpen, initialApp?.id]);
 
   useModal(isOpen, 'full-register-modal', onClose);
   if (!isOpen) return null;
@@ -32,25 +44,27 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
       fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
     };
 
+    const categoryTech = category === 'ai' ? 'Gemini AI • Web' : category === 'game' ? 'HTML5 Canvas' : 'React • Web';
+    const categoryBadge = category === 'game' ? '🎮 게임' : category === 'ai' ? '🤖 AI' : '📚 유틸';
     const saved = await onSubmit({
       title,
-      description: desc || `${dev} 친구가 개발한 동아리 프로젝트입니다.`,
+      description: isEditing ? desc : (desc || `${dev} 친구가 개발한 동아리 프로젝트입니다.`),
       category,
-      tech: category === 'ai' ? 'Gemini AI • Web' : category === 'game' ? 'HTML5 Canvas' : 'React • Web',
+      tech: isEditing && initialApp?.category === category ? initialApp.tech : categoryTech,
       aiTools,
-      aiUsage: [],
-      aiNote: '',
-      badges: ['✨ 신규 등록', category === 'game' ? '🎮 게임' : category === 'ai' ? '🤖 AI' : '📚 유틸'],
-      actionText: '👉 지금 바로 체험하기',
-      actionIcon: 'play_arrow',
-      actionBgColor: 'bg-[#3525cd]',
+      aiUsage: initialApp?.aiUsage || [],
+      aiNote: initialApp?.aiNote || '',
+      badges: [initialApp?.badges?.[0] || '✨ 신규 등록', categoryBadge],
+      actionText: initialApp?.actionText || '👉 지금 바로 체험하기',
+      actionIcon: initialApp?.actionIcon || 'play_arrow',
+      actionBgColor: initialApp?.actionBgColor || 'bg-[#3525cd]',
       authorName: dev,
-      authorRole: '동아리 크루',
-      authorInitial: dev.slice(-1) || '크',
-      authorInitialBg: 'bg-[#4f46e5]',
-      imageUrl: defaultImages[category],
+      authorRole: initialApp?.authorRole || '동아리 크루',
+      authorInitial: dev.slice(-1) || initialApp?.authorInitial || '크',
+      authorInitialBg: initialApp?.authorInitialBg || 'bg-[#4f46e5]',
+      imageUrl: initialApp?.imageUrl || defaultImages[category],
       url: url,
-      simulatorType: 'generic',
+      simulatorType: initialApp?.simulatorType || 'generic',
     });
     if (!saved) return;
 
@@ -64,7 +78,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
 
   return (
     <div
-      id="full-register-modal" role="dialog" aria-modal="true" aria-label="작품 등록"
+      id="full-register-modal" role="dialog" aria-modal="true" aria-label={isEditing ? '작품 수정' : '작품 등록'}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 transition-all duration-300"
     >
@@ -75,7 +89,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
               ✨
             </span>
             <h3 className="text-lg font-bold text-[#0b1c30]">
-              내 웹앱 프로젝트 등록하기
+              {isEditing ? '내 웹앱 프로젝트 수정하기' : '내 웹앱 프로젝트 등록하기'}
             </h3>
           </div>
           <button
@@ -200,7 +214,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, o
             className="w-full mt-2 h-12 rounded-xl bg-[#3525cd] text-white text-sm font-bold shadow-md shadow-[#3525cd]/25 active:scale-98 transition-all hover:bg-[#281ca3] flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            <span>공용 갤러리에 작품 등록</span>
+            <span>{isEditing ? '작품 수정 내용 저장' : '공용 갤러리에 작품 등록'}</span>
           </button>
         </form>
       </div>
