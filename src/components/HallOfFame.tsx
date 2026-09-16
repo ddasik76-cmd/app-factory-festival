@@ -3,9 +3,10 @@ import { Trophy } from 'lucide-react';
 
 interface HallOfFameProps {
   onSelectVocabWars?: () => void;
+  plays?: number;
 }
 
-export const HallOfFame: React.FC<HallOfFameProps> = ({ onSelectVocabWars }) => {
+export const HallOfFame: React.FC<HallOfFameProps> = ({ onSelectVocabWars, plays = 0 }) => {
   return (
     <section className="px-4 py-2 mb-4">
       <div className="p-4 rounded-2xl bg-[#e5eeff] flex flex-col gap-2.5 border border-[#d3e4fe]">
@@ -42,7 +43,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ onSelectVocabWars }) => 
               <span className="text-xs">👑</span>
             </div>
             <p className="text-xs text-[#464555] truncate mt-0.5 font-medium">
-              &quot;Vocab Wars&quot;로 누적 300회 플레이 달성!
+              &quot;Vocab Wars&quot;로 누적 {plays.toLocaleString()}회 플레이 달성!
             </p>
           </div>
         </div>

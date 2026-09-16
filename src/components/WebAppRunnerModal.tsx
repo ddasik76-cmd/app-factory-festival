@@ -29,6 +29,7 @@ interface WebAppRunnerModalProps {
   onShowToast: (msg: string) => void;
   onToggleLike: (appId: string) => Promise<boolean>;
   onRate: (appId: string, value: number) => Promise<boolean>;
+  onRecordPlay: (appId: string) => void;
   userRating?: number;
   comments: ProjectComment[];
   isCommentsLoading: boolean;
@@ -44,6 +45,7 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
   onShowToast,
   onToggleLike,
   onRate,
+  onRecordPlay,
   userRating,
   comments,
   isCommentsLoading,
@@ -330,6 +332,7 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
               id="modal-newtab-btn"
               aria-disabled={app.simulatorType !== 'generic'}
               href={app.simulatorType === 'generic' ? safeUrl(app.url) || undefined : undefined}
+              onClick={() => { if (app.simulatorType === 'generic') onRecordPlay(app.id); }}
               target="_blank"
               rel="noopener noreferrer"
               className="w-8 h-8 rounded-lg bg-slate-100 text-[#0b1c30] hover:bg-slate-200 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
@@ -629,6 +632,7 @@ export const WebAppRunnerModal: React.FC<WebAppRunnerModalProps> = ({
               </div>
               <a
                 href={app.simulatorType === 'generic' ? safeUrl(app.url) || undefined : undefined}
+                onClick={() => { if (app.simulatorType === 'generic') onRecordPlay(app.id); }}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-3 rounded-xl bg-[#57dffe] text-[#006172] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#acedff] transition-all"
