@@ -63,7 +63,7 @@ npm run build
 
 ## 자동 썸네일 서버 활성화
 
-`functions/`는 Firebase Functions 2세대 서버입니다. 기본 빌드에서 `VITE_THUMBNAIL_SERVICE_ENABLED=false`로 서버 전용 버튼을 숨깁니다. 자동 생성과 직접 이미지 등록은 다음 설정 완료 후 활성화해야 합니다.
+`functions/`는 데이터베이스와 같은 서울(`asia-northeast3`) 지역의 Firebase Functions 2세대 서버입니다. 기본 빌드에서 `VITE_THUMBNAIL_SERVICE_ENABLED=false`로 서버 전용 버튼을 숨깁니다. 자동 생성과 직접 이미지 등록은 다음 설정 완료 후 활성화해야 합니다.
 
 1. `app-factory-festival` 프로젝트에 사용자가 승인한 Blaze 결제 계정을 연결하고 Firebase Storage 기본 버킷 `app-factory-festival.firebasestorage.app`을 생성합니다. 이 설정은 비용이 발생할 수 있어 코드 작업에서 자동으로 변경하지 않습니다.
 2. Node.js 22 환경에서 `npm ci --prefix functions --ignore-scripts`를 실행합니다.
@@ -93,3 +93,7 @@ node scripts/preview-gallery.cjs
 ```
 
 에뮬레이터 테스트는 운영 데이터에 접근하지 않는 `demo-app-factory` 프로젝트에서 권한·요청 중복·주소 변경·실패 복구·업로드·기존 작품 전환을 확인합니다. 화면 검증 도구는 공개 작품을 읽어 PC·태블릿·모바일 이미지를 `test-results/`에 저장합니다.
+
+운영 사이트 검증 시 `GALLERY_BASE_URL=https://ddasik76-cmd.github.io/app-factory-festival/`을 설정하고 `node scripts/preview-gallery.cjs`를 실행합니다.
+
+서버 배포 후 운영자가 기존 Firebase CLI 로그인으로 초기 전환을 실행할 수도 있습니다. `FIREBASE_TOOLS_AUTH_PATH`를 설치된 `firebase-tools/lib/auth.js`의 절대 경로로 지정하고 `node scripts/migrate-live-thumbnails.cjs`를 실행하면 조회만 합니다. 실제 요청 등록은 `--enqueue`, 시험 대상 수 제한은 `--limit=1`, 실패한 항목 재요청은 `--retry-failed`를 명시합니다. 작품의 동시 변경을 덮어쓰지 않도록 문서 변경 시각을 확인하고 원자적으로 요청을 기록합니다. 인증 토큰은 출력하거나 파일에 저장하지 않습니다.

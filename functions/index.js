@@ -115,11 +115,15 @@ async function finish(id, revision, sourceUrl, image, source) {
   return result.saved;
 }
 
-async function fail(id, revision) {
+async function fail(id, revision, error) {
   await db.runTransaction(async tx => {
     const [job, project] = await Promise.all([tx.get(jobRef(id)), tx.get(projectRef(id))]);
     if (!job.exists || job.data().revision !== revision) return;
-    tx.update(jobRef(id), { status: 'failed', completedAt: stamp() });
+    tx.update(jobRef(id), {
+      status: 'failed', completedAt: stamp(),
+      // Private job diagnostics remain inaccessible to client SDKs.
+      error: String(error?.message || 'capture-failed').slice(0, 1200),
+    });
     if (project.exists && project.data().url === job.data().url) tx.update(projectRef(id), {
       thumbnailStatus: 'failed',
       thumbnailError: '첫 화면을 가져오지 못했습니다. 주소를 확인한 뒤 재시도하거나 이미지를 직접 등록해주세요.',
@@ -150,7 +154,7 @@ export const captureProjectThumbnail = onDocumentWritten({
     await finish(id, incoming.revision, incoming.url, image, 'capture');
   } catch (error) {
     console.warn('Thumbnail capture failed', { projectId: id, reason: error?.message });
-    await fail(id, incoming.revision);
+    await fail(id, incoming.revision, error);
   }
 });
 
@@ -189,7 +193,7 @@ export const uploadThumbnail = onCall(callOptions, async request => {
     if (!saved) throw new HttpsError('aborted', '작품 주소가 변경되었습니다. 다시 등록해주세요.');
     return { saved };
   } catch (error) {
-    await fail(id, revision);
+    await fail(id, revision, error);
     throw error;
   }
 });

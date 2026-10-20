@@ -38,7 +38,7 @@ export async function publicRequest(value, { method = 'GET', headers = {}, body 
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   const answers = await dns.lookup(hostname, { all: true });
   if (!answers.length || answers.some(answer => !publicAddress(answer.address))) throw new Error('unsafe-address');
-  const answer = answers[0];
+  const answer = answers.find(candidate => candidate.family === 4) || answers[0];
   const safeHeaders = {};
   for (const name of ['accept', 'accept-language', 'content-type', 'origin', 'referer', 'user-agent']) {
     if (headers[name]) safeHeaders[name] = headers[name];

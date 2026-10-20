@@ -22,7 +22,8 @@ const { chromium } = require('@playwright/test');
       const page = await browser.newPage({ viewport: { width, height: 1000 } });
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.goto(`http://127.0.0.1:${server.address().port}/app-factory-festival/`);
+      const previewUrl = process.env.GALLERY_BASE_URL || `http://127.0.0.1:${server.address().port}/app-factory-festival/`;
+      await page.goto(previewUrl);
       await page.locator('[data-app-id="app-01e8f963-f385-444b-8406-0bf8bd292119"]').waitFor({ timeout: 30000 });
       // Load lazy thumbnails before taking the full-page screenshot.
       for (const card of await page.locator('#showcase-container article').all()) await card.scrollIntoViewIfNeeded();
@@ -32,10 +33,10 @@ const { chromium } = require('@playwright/test');
       await page.screenshot({ path: `test-results/gallery-${width}.png`, fullPage: true });
       await page.screenshot({ path: `test-results/gallery-${width}-viewport.png` });
       console.log(JSON.stringify({
-        width, cards: await page.locator('#showcase-container article').count(),
+        url: previewUrl, width, cards: await page.locator('#showcase-container article').count(),
         overflow: await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         brokenImages: broken,
-        firstScreenPreviews: await page.locator('#showcase-container img[src*="project-thumbnails/"]').count(),
+        firstScreenPreviews: await page.locator('#showcase-container img[src*="project-thumbnails"]').count(),
         errors,
       }));
       await page.close();

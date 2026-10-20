@@ -16,10 +16,11 @@ export async function captureFirstScreen(url, executablePath) {
     },
     defaultViewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
   });
-  const deadline = setTimeout(() => void browser.close(), 55000);
+  const deadline = setTimeout(() => void browser.close().catch(() => undefined), 55000);
   try {
-    const context = await browser.createBrowserContext();
-    const page = await context.newPage();
+    // Each job launches a fresh browser. Extra incognito contexts are unnecessary
+    // and are not supported reliably by serverless Chromium's single-process mode.
+    const page = await browser.newPage();
     await page.setBypassServiceWorker(true);
     await page.setRequestInterception(true);
     let requests = 0;
