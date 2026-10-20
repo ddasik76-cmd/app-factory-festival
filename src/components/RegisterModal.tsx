@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Send } from 'lucide-react';
 import { AppProject } from '../types';
 import { useModal } from '../useModal';
+import { thumbnailServiceEnabled } from '../thumbnails';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -37,12 +38,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, i
     e.preventDefault();
     if (!title.trim() || !dev.trim()) return;
 
-    const defaultImages = {
-      game: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDiFjQoXQQ7HdA80sUpshK86Np528hLZdZdEqyThkbsTep0iRNTrLamnw2pu6R1jHbB_Oz9vIsQyzYKzvM7hjaEbR8r63yo_RwSROl0i738FBszQoFulVj594i1LfrdTGEhGgnnA6MvrC4t22mTXOD0JBn8Ws8-oAZmcWaldut5D1r9U8LSKZ402ftIIeyZdF1uGxWG-emXXwm3lZ19zAd2TpHTT3AT94YGakGVzB8iP__25aQeg5xa',
-      ai: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDKvPLvgfoKuxFvzZ5fgVvgudakxOxyEAaIgtp6ktYs4l2VF7CKu86kTkDAE-RZlXxXzyHlBeEY2vATTMc_scHcSly7A9KRpBVx5-U6CO7Eo6X_2B6yRSWPF74tznX7HvwPSFIezn_L2_Ly_qvB7aaEMite6EVLBMNYhU7xz214HbSwjKQd715_7DcG3DmZ2efOQlLGE4NikWb7hlu6YYHcF-ggM9iELkO0_Qwt1R6fa_VgtX5hIqhq',
-      study: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA7IDKF5dnxYbc5QWWoyq55utiLPjDCi_MPPsowlgVnGetK9sM8hQ4xCGdTdZTfggXEGhQqgGi3_PdmZ4U_JtBLWnDEcGc03odN7cVofTYPVBvx8w6Pc6J5ZoDOmQpJ8PsE0NG90jPSMudAueQu0mBR7z0duAyDPqzdnOT4_go21FAC3Huafvib6tS8Q9u2_vgN_1FOvRwakcpKduluE4dqezT8JTgh9aWjpXtyphd8vybkDVdu3kot',
-      fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
-    };
 
     const categoryTech = category === 'ai' ? 'Gemini AI • Web' : category === 'game' ? 'HTML5 Canvas' : 'React • Web';
     const categoryBadge = category === 'game' ? '🎮 게임' : category === 'ai' ? '🤖 AI' : '📚 유틸';
@@ -62,7 +57,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, i
       authorRole: initialApp?.authorRole || '동아리 크루',
       authorInitial: dev.slice(-1) || initialApp?.authorInitial || '크',
       authorInitialBg: initialApp?.authorInitialBg || 'bg-[#4f46e5]',
-      imageUrl: initialApp?.imageUrl || defaultImages[category],
+      imageUrl: initialApp?.imageUrl || new URL(`${import.meta.env.BASE_URL}fallback.svg`, window.location.href).href,
       url: url,
       simulatorType: initialApp?.simulatorType || 'generic',
     });
@@ -190,9 +185,16 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, i
               required
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://github.io/my-cool-app"
+              placeholder="https://username.github.io/my-cool-app/"
+              aria-describedby="thumbnail-help"
               className="w-full h-11 px-3.5 rounded-xl bg-white text-[#0b1c30] text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3525cd]/40 focus:border-[#3525cd] shadow-sm transition-all"
             />
+            <p id="thumbnail-help" className="mt-2 text-xs leading-relaxed text-slate-500">
+              실제로 실행되는 웹앱 주소를 입력해주세요.
+              {thumbnailServiceEnabled
+                ? ' 등록하거나 주소를 변경하면 공개 첫 화면을 자동으로 가져옵니다. 로그인 화면이 나오거나 캡처가 어려운 경우, 등록 후 작품 카드에서 첫 화면 이미지를 직접 올릴 수 있습니다.'
+                : ' 저장소 링크 대신 웹앱이 열리는 주소를 사용해주세요.'}
+            </p>
           </div>
 
           <div>

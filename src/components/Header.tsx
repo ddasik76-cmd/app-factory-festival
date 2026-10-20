@@ -12,7 +12,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenRegister, onOpenProfile, user, canRegister }) => {
   return (
     <header className="fixed top-0 w-full z-40 bg-[#f8f9ff]/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe">
-      <div className="h-16 px-4 flex items-center justify-between gap-2 max-w-5xl mx-auto">
+      <div className="h-16 px-4 flex items-center justify-between gap-2 max-w-[1200px] mx-auto">
         <div className="flex items-center gap-3">
           <img onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `${import.meta.env.BASE_URL}fallback.svg`; }}
             alt="팔봉중학교 로고"

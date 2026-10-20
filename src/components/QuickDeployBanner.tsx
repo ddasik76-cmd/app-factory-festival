@@ -18,13 +18,6 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
     e.preventDefault();
     if (!appTitle.trim() || !devName.trim()) return;
 
-    // Pick appropriate image placeholder or generator
-    const defaultImages = {
-      game: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDiFjQoXQQ7HdA80sUpshK86Np528hLZdZdEqyThkbsTep0iRNTrLamnw2pu6R1jHbB_Oz9vIsQyzYKzvM7hjaEbR8r63yo_RwSROl0i738FBszQoFulVj594i1LfrdTGEhGgnnA6MvrC4t22mTXOD0JBn8Ws8-oAZmcWaldut5D1r9U8LSKZ402ftIIeyZdF1uGxWG-emXXwm3lZ19zAd2TpHTT3AT94YGakGVzB8iP__25aQeg5xa',
-      ai: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDKvPLvgfoKuxFvzZ5fgVvgudakxOxyEAaIgtp6ktYs4l2VF7CKu86kTkDAE-RZlXxXzyHlBeEY2vATTMc_scHcSly7A9KRpBVx5-U6CO7Eo6X_2B6yRSWPF74tznX7HvwPSFIezn_L2_Ly_qvB7aaEMite6EVLBMNYhU7xz214HbSwjKQd715_7DcG3DmZ2efOQlLGE4NikWb7hlu6YYHcF-ggM9iELkO0_Qwt1R6fa_VgtX5hIqhq',
-      study: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC7zWyT2xjuUZIB-q2oHa6RjH9MNsoa778h2iv1lcjPFyUtqwnovZB0zSdTQ6jFgBFrucMqPgXkonYqLnSpWWiu-SJt3M2SPW11SnNL7OOIJhGtVlm_19WrdCi9HIjwMlVG29JBdqTZD61RQRl_EoXCN2dgPIXk4qXT8A6eW2zitjy-4HBbZod68XEZJSGPcUhwITOE5U9ZyQyA7FE00yMjoIRwSPjmrt_fwWgITAJZdkavyW1yxzey',
-      fun: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnaQFCzMjweOt3xXah09unK-y5P7MYVYR3vzpEZTktA7FhbeClj_18rKHZM31SVQxfwwxaN-Qc5zOzZCF8-pFHJjUBP9WEFbZMiy8SqhXKsshYSrWMwAuzHioeodK_6k-YtOc3a4HEWaUIdXNMM_go3us9pcizc68fY3PxHYOPinZHFns4vHpvWGfHarZCae0QFjmw4zCvNZcrHT6tSg5yIoO27YUsz6dZYbLLts7uHCsXsiTZ31h-',
-    };
 
     const saved = await onQuickDeploy({
       title: appTitle,
@@ -39,7 +32,7 @@ export const QuickDeployBanner: React.FC<QuickDeployBannerProps> = ({ onQuickDep
       authorRole: '앱팩토리 동아리원',
       authorInitial: devName.slice(-1) || '민',
       authorInitialBg: 'bg-[#4f46e5]',
-      imageUrl: defaultImages[category],
+      imageUrl: new URL(`${import.meta.env.BASE_URL}fallback.svg`, window.location.href).href,
       url: appUrl,
       simulatorType: 'generic',
       aiTools,

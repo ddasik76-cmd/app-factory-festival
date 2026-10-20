@@ -15,6 +15,10 @@ export interface AppProject {
   authorInitial: string;
   authorInitialBg: string;
   imageUrl: string;
+  thumbnailStatus?: 'pending' | 'processing' | 'ready' | 'failed' | 'needs-url';
+  thumbnailSource?: 'capture' | 'upload';
+  thumbnailSourceUrl?: string;
+  thumbnailError?: string;
   rating: number;
   ratingCount?: number;
   ratingTotal?: number;

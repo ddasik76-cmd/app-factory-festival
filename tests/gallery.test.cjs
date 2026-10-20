@@ -70,6 +70,31 @@ test('mobile and desktop layouts keep dialogs in viewport', async () => {
     await page.context().close();
   }
 });
+test('gallery uses 1/2/3 columns with equal row heights and stable filtered card width', async () => {
+  for (const [width, columns] of [[390, 1], [767, 1], [768, 2], [1199, 2], [1200, 3], [1440, 3]]) {
+    const page = await pageFor(width, 1000);
+    await cards(page).first().waitFor();
+    const boxes = await cards(page).evaluateAll(items => items.map(item => {
+      const { x, y, width, height } = item.getBoundingClientRect();
+      return { x, y, width, height };
+    }));
+    assert.equal(boxes.filter(box => Math.abs(box.y - boxes[0].y) < 1).length, columns);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    for (const box of boxes.slice(0, columns)) assert.ok(Math.abs(box.height - boxes[0].height) < 1);
+    await page.locator('#search-input').fill('이준서');
+    assert.equal(await cards(page).count(), 1);
+    const filtered = await cards(page).first().boundingBox();
+    assert.ok(Math.abs(filtered.width - boxes[0].width) < 1);
+    await page.locator('#search-input').fill('존재하지않는작품검색어');
+    assert.equal(await cards(page).count(), 0);
+    assert.equal(await page.getByText('검색 결과가 없습니다').count(), 1);
+    if (width === 1440) {
+      await page.locator('#search-input').fill('');
+      await page.screenshot({ path: 'test-results/desktop-grid.png', fullPage: true });
+    }
+    await page.context().close();
+  }
+});
 test('timer audio is released when muted and when modal closes', async () => {
   const page = await pageFor();
   await page.evaluate(() => {

@@ -34,6 +34,8 @@ jobs:
         run: npm run lint
 
       - name: Build project
+        env:
+          VITE_THUMBNAIL_SERVICE_ENABLED: ${{ vars.VITE_THUMBNAIL_SERVICE_ENABLED || 'false' }}
         run: npm run build
 
       - name: Upload artifact

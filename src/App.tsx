@@ -10,6 +10,7 @@ import { HeroSection } from './components/HeroSection';
 import { SearchAndFilters } from './components/SearchAndFilters';
 import { QuickDeployBanner } from './components/QuickDeployBanner';
 import { AppCard } from './components/AppCard';
+import { ThumbnailMigration } from './components/ThumbnailControls';
 import { HallOfFame } from './components/HallOfFame';
 import { WebAppRunnerModal } from './components/WebAppRunnerModal';
 import { RegisterModal } from './components/RegisterModal';
@@ -304,7 +305,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-lg mx-auto pt-16 pb-20">
+      <main className={`flex-1 w-full mx-auto pt-16 pb-20 ${activeTab === 'gallery' ? 'gallery-main' : 'max-w-lg'}`}>
         {activeTab === 'gallery' && (
           <div className="flex flex-col w-full">
             {/* Creative Hero Banner */}
@@ -326,6 +327,7 @@ export default function App() {
 
             <p className="px-4 text-xs text-slate-500">작품과 응원은 공용 갤러리에 실시간으로 반영됩니다. 작품 등록은 승인된 동아리 멤버와 관리자만 할 수 있습니다.</p>
             {/* Project Cards Feed */}
+            {isAdmin && <ThumbnailMigration />}
             <section className="px-4 py-3 flex flex-col gap-4" id="showcase-container">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -356,7 +358,7 @@ export default function App() {
                   </p>
                 </div>
               ) : (
-                filteredApps.map((app) => (
+                <div className="project-grid">{filteredApps.map((app) => (
                   <AppCard
                     key={app.id}
                     app={app}
@@ -370,7 +372,7 @@ export default function App() {
                     onRestore={handleRestore}
                     onPermanentDelete={handlePermanentDelete}
                   />
-                ))
+                ))}</div>
               )}
             </section>
 

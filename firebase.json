@@ -1,4 +1,11 @@
 {
+  "functions": [{
+    "source": "functions",
+    "codebase": "thumbnails",
+    "runtime": "nodejs22",
+    "ignore": ["node_modules", ".git", "test", "scripts", "*.log"]
+  }],
+  "storage": { "rules": "storage.rules" },
   "firestore": {
     "rules": "firestore.rules"
   }

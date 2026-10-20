@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { getFunctions } from 'firebase/functions';
 import { GoogleAuthProvider, User, getAuth, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection,
@@ -19,6 +20,7 @@ import { INITIAL_APPS } from './data/initialApps';
 import { AppProject, ClubMember, ClubProfile, ClubSchedule, MemberRequest, MemberStatus, ProjectComment } from './types';
 import { safeUrl } from './storage';
 import { calculateRatingAggregate, normaliseComment } from './social.js';
+import { migratedThumbnail } from './thumbnails';
 
 const app = initializeApp({
   apiKey: 'AIzaSyBinRsli5VeiRGicH-JRQu1hk-VwRh5b4M',
@@ -31,6 +33,7 @@ const app = initializeApp({
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const thumbnailFunctions = getFunctions(app, 'asia-northeast3');
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -93,6 +96,7 @@ function asProject(id: string, data: Record<string, unknown>, likedIds: Set<stri
   const plays = Number.isInteger(rawPlays) && rawPlays >= 0 ? rawPlays : 0;
   const candidate = { ...data, id, plays, rating, ratingCount, ratingTotal, hidden: data.hidden === true, isLiked: likedIds.has(id) } as unknown as AppProject;
   if (!candidate.title || !candidate.authorName || !safeUrl(candidate.url) || !safeUrl(candidate.imageUrl)) return null;
+  candidate.imageUrl = migratedThumbnail(candidate) || candidate.imageUrl;
   return candidate;
 }
 

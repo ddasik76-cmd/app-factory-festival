@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, MessageSquare, Heart, Play, Utensils, Sparkles, Swords, BookOpen, Pencil } from 'lucide-react';
 import { AppProject } from '../types';
+import { ThumbnailControls } from './ThumbnailControls';
 
 interface AppCardProps {
   app: AppProject;
@@ -51,7 +52,7 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
         />
         
         {/* Gradient shadow overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/65 to-transparent pointer-events-none" />
 
         {/* Top Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10 pointer-events-none">
@@ -73,15 +74,11 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
         <button
           type="button"
           onClick={() => onOpenApp(app)}
-          className="absolute inset-0 flex items-center justify-center z-10 cursor-pointer"
+          className="absolute inset-0 z-10 cursor-pointer"
           title={`${app.title} 실행하기`}
+          aria-label={`${app.title} 실행하기`}
         >
-          <span
-            className={`px-4 py-2.5 rounded-full ${app.actionBgColor} text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-black/30 backdrop-blur-sm transform active:scale-95 transition-all group-hover:scale-105`}
-          >
-            {getActionIcon()}
-            <span>{app.actionText}</span>
-          </span>
+          <span className="sr-only">{app.actionText}</span>
         </button>
 
         {/* Bottom stats overlay on image */}
@@ -102,8 +99,12 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
       </div>
 
       {/* Card Content */}
-      <div className="p-4 flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-2">
+      <div className="p-4 flex flex-col flex-1 gap-2">
+        {app.thumbnailStatus && app.thumbnailStatus !== 'ready' && <p role="status" className="text-xs text-slate-500">
+          {['pending', 'processing'].includes(app.thumbnailStatus) ? '미리보기 준비 중 · 준비되면 자동으로 표시됩니다' :
+            app.thumbnailStatus === 'needs-url' ? '첫 화면 이미지 등록이 필요합니다' : '첫 화면 미리보기를 가져오지 못했습니다'}
+        </p>}
+        <div className="flex items-start justify-between gap-2 min-h-[64px]">
           <div className="min-w-0 flex-1">
             <h3 className="leading-snug line-clamp-1">
               <button type="button" onClick={() => onOpenApp(app)} className="text-left text-base font-bold text-[#0b1c30] hover:text-[#3525cd] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3525cd] rounded">
@@ -130,7 +131,11 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
             />
           </button>
         </div>
-        {canManage && <div className="flex items-center gap-2 pt-1">
+        <button type="button" onClick={() => onOpenApp(app)}
+          className={`mt-1 px-4 py-2.5 rounded-xl ${app.actionBgColor} text-white text-xs font-bold flex items-center justify-center gap-2`}>
+          {getActionIcon()}<span>{app.actionText}</span>
+        </button>
+        {canManage && <div className="flex flex-wrap items-center gap-2 pt-1">
           {canEdit && <button type="button" onClick={() => onEdit?.(app)} className="text-xs rounded-lg bg-[#e5eeff] px-3 py-2 font-bold text-[#3525cd] flex items-center gap-1"><Pencil className="w-3 h-3" /> 작품 수정</button>}
           {!app.hidden && <button type="button" onClick={() => onHide?.(app.id)} className="text-xs rounded-lg bg-amber-50 px-3 py-2 font-bold text-amber-800">갤러리에서 숨기기</button>}
           {app.hidden && isAdmin && <>
@@ -138,9 +143,10 @@ export const AppCard: React.FC<AppCardProps> = ({ app, onOpenApp, onToggleLike, 
             <button type="button" onClick={() => onPermanentDelete?.(app.id)} className="text-xs rounded-lg bg-red-50 px-3 py-2 font-bold text-red-800">영구 삭제</button>
           </>}
         </div>}
+        {canEdit && <ThumbnailControls app={app} />}
 
         {/* Author & Tech Info */}
-        <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-100">
+        <div className="flex items-center justify-between gap-2 pt-2 mt-auto border-t border-slate-100">
           <div className="flex items-center gap-2 min-w-0">
             <div
               className={`w-7 h-7 rounded-full ${app.authorInitialBg} text-white flex items-center justify-center text-xs font-bold flex-shrink-0`}

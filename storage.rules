@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Uploads are validated and written by the authenticated callable function.
+    // Public thumbnails are served using their individual download tokens.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

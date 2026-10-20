@@ -46,7 +46,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </p>
 
         {/* Fast Action Row */}
-        <div className="flex items-center gap-2.5 pt-1">
+        <div className="flex items-center gap-2.5 pt-1 w-full max-w-xl">
           <button
             id="open-register-btn"
             onClick={onOpenRegister}
